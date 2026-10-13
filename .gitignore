@@ -1,0 +1,27 @@
+# ---------------------------------------------------------------- C++
+# CMake 构建目录（cpp/build.cmd 的输出，含 .sln / .vcxproj / .exe / .obj）
+cpp/build/
+build/
+
+# Visual Studio 用户级文件
+.vs/
+*.user
+*.suo
+*.userosscache
+
+# ---------------------------------------------------------------- Godot
+# 编辑器与导入缓存（Godot 4 的 .godot 目录）
+.godot/
+
+# 导出配置（可能包含签名密钥等敏感信息，按需决定是否提交）
+# export_presets.cfg
+
+# ---------------------------------------------------------------- 其他
+# WorkBuddy 工作区数据
+.workbuddy/
+
+# 编辑器/系统临时文件
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
