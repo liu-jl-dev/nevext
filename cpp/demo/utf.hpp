@@ -5,9 +5,9 @@
 // ⚠ 本文件由 LLM 生成（2026-10-13），未经大规模生产环境验证，
 //   合入前请自行审阅，尤其是错误恢复策略是否符合你的业务预期。
 //
-// 本文件不设命名空间，所有函数直接暴露在全局作用域。
-// 内部辅助函数统一以 Utf 前缀命名（UtfNextUtf8 / UtfAppendUtf8 等），
-// 请勿在业务代码中直接调用它们。
+// 所有公开函数位于 namespace utf，调用时写作 utf::Utf16ToUtf8(...)。
+// 内部辅助函数同样在该命名空间内，以 Utf 前缀区分
+// （UtfNextUtf8 / UtfAppendUtf8 / kUtfReplacement 等），请勿在业务代码中直接调用。
 //
 // 实现取舍：
 //   1. 手写编解码，不使用 C++17 起弃用、C++26 移除的 <codecvt> /
@@ -307,12 +307,12 @@ inline std::wstring Utf8ToWide(std::string_view src) {
 //   #include "utf.hpp"
 //
 //   std::u16string u16  = u"海上生明月 \U0001F315";       // 🌕 U+1F315
-//   std::string    u8   = Utf16ToUtf8(u16);               // → UTF-8 字节串
-//   std::u16string back = Utf8ToUtf16(u8);                // → 与 u16 相同
+//   std::string    u8   = utf::Utf16ToUtf8(u16);          // → UTF-8 字节串
+//   std::u16string back = utf::Utf8ToUtf16(u8);           // → 与 u16 相同
 //
 //   std::u16string out;
 //   std::size_t pos = 0;
-//   if (!Utf8ToUtf16(u8, out, &pos)) {                    // 严格模式
+//   if (!utf::Utf8ToUtf16(u8, out, &pos)) {               // 严格模式
 //     printf("非法 UTF-8，位置 %zu\n", pos);
 //   }
 //
