@@ -25,18 +25,28 @@ GCC / Clang 默认即为 UTF-8，无需额外配置。
 ### 目录结构
 ```
 cpp/
-├── CMakeLists.txt        # 仅用于构建 demo01
+├── CMakeLists.txt        # 构建 demo01 与单元测试 nevext_test
 ├── build.cmd             # cmake -B build && cmake --build build
 ├── run01.cmd             # 运行示例
+├── test.cmd              # 运行单元测试（ctest）
 ├── nevext/               # ★ 库本体，只需拷贝这个目录
 │   ├── common.hpp        # 枚举定义
 │   ├── lexer.hpp         # 词法分析
 │   ├── parser.hpp        # 语法分析
 │   └── nevext.hpp        # 汇总头，include 这个即可
+├── test/                 # 单元测试（零第三方依赖，不随库发布）
+│   ├── test_framework.hpp
+│   ├── test_util.hpp
+│   ├── test_main.cpp
+│   ├── test_lexer.cpp
+│   ├── test_parser.cpp
+│   └── test_error.cpp
 └── demo/
     ├── demo01.cpp        # 可运行示例
     └── utf.hpp           # UTF-8 / UTF-16 转换工具（本文件由 LLM 生成）
 ```
+
+测试计划见 [cpp/doc/test-plan.md](../../cpp/doc/test-plan.md)。
 
 **MSVC 注意事项：** MSVC 默认按 ANSI 代码页解析源文件，含中文的 `u"..."` 字面量会被错误
 解码，必须加 `/utf-8` 编译选项。本项目的 `CMakeLists.txt` 已处理：
@@ -126,6 +136,14 @@ cmake --build build
 ./build/Debug/demo01.exe
 ```
 
+运行单元测试（不需要 demo 的 Windows 控制台设置）：
+
+```bash
+cd build && ctest -C Debug --output-on-failure
+# 或直接跑可执行文件，支持按用例名筛选
+./build/test/nevext_test Lexer
+```
+
 ## API 参考
 
 所有类型和函数都在 `namespace Nevext` 下。
@@ -212,9 +230,26 @@ token 再报一条 `unexpected token.`（进 `parser.errors`）。
 
 转义是在语法分析阶段处理的，因此转义错误只在 `parser.errors` 中。
 
-### 错误去重规则
+### 不做错误去重
 
-`Parser::error()` 内部有行号去重：只有行号严格大于上一条已记录错误的行号时才会记录。
+每一处错误都会写进对应的容器，包括同一行内的多处错误；行号相同的错误也会各记一条。
+
+```cpp
+// 输入: "a\qb" "c\qd"; e    （pauseWhenError = false）
+// parser.errors:
+//   line 1: invalid escape character.
+//   line 1: invalid escape character.
+```
+
+即同一行的两处非法转义会各记一条，不会因为行号相同而被合并。
+
+### 非错误的情况
+
+| 现象 | 说明 |
+| --- | --- |
+| 未闭合的多行注释 | **不是错误**（语法规定）：从 `/*` 到输入结束全部视为注释，其后的内容会被丢弃，两个错误容器都为空 |
+| 末尾语句缺少分号 | 不是错误，语法允许 |
+| 空语句 `;` | 不是错误，只是不产生语句 |
 
 ### 实测行为
 

@@ -1,0 +1,15 @@
+# ---------------------------------------------------------------- 行尾策略
+# 仓库内一律存 LF；工作区按平台习惯（Windows 上 core.autocrlf=true 时检出为 CRLF）。
+#
+# 关键点：显式写上 text=auto 后，无论提交者本机的 core.autocrlf 怎么配置，
+# 提交时都会把 CRLF 归一化成 LF。此前正是因为只有 core.autocrlf 在兜底，
+# 换了一个 git 环境提交就把 3 个文件的行尾从 LF 翻成了 CRLF。
+* text=auto
+
+# 不单独为 .cmd / .bat 指定 eol：它们归入上面的 * text=auto，
+# 仓库内存 LF，Windows 用户检出时由 core.autocrlf=true 转成 CRLF。
+
+# 明确按二进制处理，避免任何转换
+*.png binary
+*.jpg binary
+*.ico binary

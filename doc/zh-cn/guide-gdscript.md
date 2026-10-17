@@ -201,7 +201,8 @@ lexer.escape_func = Nevext.null_escape   # 原样返回，不做转义
 
 ### 错误没有去重
 
-C++ 版的 `Parser::error()` 有行号去重（同一行只报第一条）。GDScript 版**没有这个逻辑**。
+两版一致：**都不做去重**。C++ 版的 `Parser::error()` 曾有行号去重（同一行只报第一条），
+现已移除；GDScript 版从未有过这个逻辑。
 实测同一行制造两个错误（`pause_when_error = false`）时，两条都进入 `errors`：
 
 ```json

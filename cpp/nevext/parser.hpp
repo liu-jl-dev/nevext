@@ -12,7 +12,6 @@ struct Parser {
   Lexer* lexer;
   Token curToken;
   std::vector<std::string> errors;
-  int lastErrorLine = -1;
   Parser(Lexer& lexer) : lexer(&lexer) {}
   Result ParseProgram(Program& prog, bool pauseWhenError = true) {
     Result result = Result::Success;
@@ -31,7 +30,10 @@ struct Parser {
           result = Result::Error;
         }
       } else {
+        // 词法错误（如未闭合字符串）会以 Unexpected token 的形式流到这里，
+        // 必须把返回值置为 Error，否则调用方只看返回值会误判为解析成功。
         error("unexpected token. ");
+        result = Result::Error;
       }
       if (pauseWhenError && errors.size() > 0) {
         break;
@@ -94,11 +96,6 @@ struct Parser {
     return Result::Success;
   }
   void error(const char* msg) {
-    if (lastErrorLine >= curToken.line) {
-      return;
-    }
-    lastErrorLine = curToken.line;
-
     std::stringstream ss;
     ss << "line " << curToken.line << ": " << msg;
     errors.emplace_back(ss.str());

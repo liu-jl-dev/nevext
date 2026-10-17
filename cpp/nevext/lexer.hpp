@@ -83,10 +83,15 @@ struct Lexer {
           error("unclosed string literal. ");
           return Result::UnclosedStringError;
         }
+        // 被转义的字符若是换行，物理行号同样要推进
+        if (input[length] == u'\n')
+          ++line;
         length += 1;
       } else if (input[length] == quote) {
         break;
       } else {
+        if (input[length] == u'\n')
+          ++line;  // 引号串可以跨行，行号必须跟着走
         length += 1;  // 普通字符，必须推进，否则死循环
       }
     }
