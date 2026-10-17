@@ -63,7 +63,7 @@ struct Lexer {
 
  private:
   inline static const std::set<char16_t> whiteChars{
-      u' ', u',', u'\t', u'\v', u'\f', u'\n', u'\r', u'\b',
+      u' ', u',', u'\t', u'\v', u'\f', u'\n', u'\r',
   };
   bool test(const std::u16string_view& prefix) {
     if (input.size() < prefix.size())
@@ -91,15 +91,14 @@ struct Lexer {
         break;
       } else {
         if (input[length] == u'\n')
-          ++line;  // 引号串可以跨行，行号必须跟着走
+          ++line;     // 引号串可以跨行，行号必须跟着走
         length += 1;  // 普通字符，必须推进，否则死循环
       }
     }
     return Result::Success;
   }
   inline static const std::set<char16_t> rawStrEndChars{
-      u' ', u',', u'\t', u'\v', u'\f', u'\n', u'\r', u'\b',
-      u';', u'"', u'\'',
+      u' ', u',', u'\t', u'\v', u'\f', u'\n', u'\r', u';', u'"', u'\'',
   };
   std::u16string_view scanRawStr() {
     size_t length = 0;
@@ -117,7 +116,7 @@ struct Lexer {
   }
   void skipWs() {
     for (; !input.empty();) {
-      if (whiteChars.find(input[0]) != whiteChars.end()) { // 找到
+      if (whiteChars.find(input[0]) != whiteChars.end()) {  // 找到
         if (input[0] == u'\n')
           ++line;
         input.remove_prefix(1);

@@ -2,7 +2,9 @@
 
 > 适用范围：`cpp/nevext/`（common.hpp / lexer.hpp / parser.hpp / nevext.hpp）
 > 测试代码目录：`cpp/test/`
-> 文档最后更新：2026-10-17（已修复 D1 / D3 / D4，D2 已上升为语法规定）
+> **跨实现通用语料不在本文档**：C++ 与 GDScript 共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
+> 落地在 `cpp/test/test_conformance.cpp`。本文档只描述 C++ 私有的 LEX / PAR / ERR 套件。
+> 文档最后更新：2026-10-17（新增跨实现一致性套件，整个套件 109 用例 / 769 断言通过）
 
 ## 1. 目标与非目标
 
@@ -14,7 +16,8 @@
 
 **非目标**
 
-- 不测试 GDScript 实现（`gdscript/`），本计划只针对 C++ 实现。
+- 不测试 GDScript 实现（`gdscript/`），本计划只针对 C++ 实现；两套实现的**一致性**由
+  `docs/zh-cn/test-plan.md` 定义的通用语料负责，C++ 侧的落地是 `test_conformance.cpp`。
 - 不做语义层测试：Nevext 只规定如何解析字符串，不规定语义（`cpp/nevext` 也不提供语义 API）。
 - 不做形式化的解析器一致性验证（差分测试 / goldens 文件），见第 9 节后续计划。
 
@@ -61,10 +64,11 @@ cpp/
 └── test/
     ├── test_framework.hpp    # 断言宏 / 用例注册 / 执行器（header-only）
     ├── test_util.hpp         # Run() / LexAll() / Expect*() 辅助
-    ├── test_main.cpp         # main → nevext_test::RunAll
+    ├── test_main.cpp         # main → RunAll，并处理 --dump
     ├── test_lexer.cpp        # 词法套件（LEX-01 ~ LEX-25）
     ├── test_parser.cpp       # 语法套件（PAR-01 ~ PAR-17）
-    └── test_error.cpp        # 错误处理与健壮性套件（ERR-01 ~ ERR-12）
+    ├── test_error.cpp        # 错误处理与健壮性套件（ERR-01 ~ ERR-12）
+    └── test_conformance.cpp  # 跨实现通用语料（Conformance.A01 ~ H04，见 docs/zh-cn/test-plan.md）
 ```
 
 **运行**
@@ -90,11 +94,13 @@ cd build && ctest -C Debug --output-on-failure
 g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
     -Icpp/nevext -Icpp/test \
     -o nevext_test.exe \
-    cpp/test/test_main.cpp cpp/test/test_lexer.cpp cpp/test/test_parser.cpp cpp/test/test_error.cpp
+    cpp/test/test_main.cpp cpp/test/test_lexer.cpp cpp/test/test_parser.cpp \
+    cpp/test/test_error.cpp cpp/test/test_conformance.cpp
 ./nevext_test.exe
 ```
 
-**当前基线（MinGW GCC 15.2，C++20）**：54 个用例 / 432 条断言全部通过。
+**当前基线（MinGW GCC 15.2，C++20）**：109 个用例 / 769 条断言全部通过。
+其中 55 个是跨实现通用语料（`Conformance.*`），由 `docs/zh-cn/test-plan.md` 定义。
 
 ## 5. 需求 → 用例追溯矩阵
 
@@ -124,7 +130,7 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 | ID | 用例名 | 输入要点 | 期望要点 |
 | --- | --- | --- | --- |
 | LEX-01 | `EmptyInputGivesEof` | 空串 | 首个 token 即 `EndOfFile`，line=1，无错误 |
-| LEX-02 | `WhitespaceAndCommaAreSkipped` | 空格/制表/换行/垂直制表/换页/回车/退格/逗号 | 全部跳过，只剩 EOF |
+| LEX-02 | `WhitespaceAndCommaAreSkipped` | 空格/制表/换行/垂直制表/换页/回车/逗号 | 全部跳过，只剩 EOF（退格**不属于**空白，见通用语料 D10） |
 | LEX-03 | `RawStringBasic` | `abc` | 一个 `RawStr`，值为 `abc` |
 | LEX-04 | `CommaSeparatesRawStrings` | `a,b` | 两个 `RawStr` |
 | LEX-05 | `DoubleQuotedString` | `"hello"` | `QuotedStr`，值不含引号 |
@@ -224,7 +230,8 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 按优先级：
 
 1. ~~修复 D1~~（已完成）、~~确认 D2 / D3 / D4~~（已完成，见第 8 节）。
-2. **引入 golden 测试**：新增 `cpp/test/data/*.nevext` + 期望产物，让 C++ 与 GDScript 两套实现跑同一份语料，验证跨实现一致性。
+2. ~~引入 golden 测试~~（已完成）：改为「跨实现通用语料」形态落地在 `test_conformance.cpp`，
+   语料与期望值沉淀在 `docs/zh-cn/test-plan.md`，GDScript 侧跑同一份，另有 `--dump` 支持逐行 diff。
 4. **结构化模糊测试**：现有 `EveryPrefixTerminates` 只保证「不死循环」，可升级为「随机生成串 → 要么成功解析、要么产出至少一条错误」，用于搜索 D1 一类的静默失败。
 5. **性能基线**：`LongRawTokenIsComplete` / `ManyStatementsAreAllParsed` 目前只做正确性；可改为打印耗时并设阈值，防止后续改动引入退化。
 6. **CI 接入**：GitHub Actions 上加 `cmake -B build && cmake --build build && ctest --output-on-failure`，覆盖 MSVC / GCC / Clang 三套编译器（同时可顺带验证源文件 UTF-8 编码假设是否成立）。

@@ -23,9 +23,11 @@ add_executable(demo01
 # 也可直接运行可执行文件并按用例名筛选：
 #   nevext_test Lexer          # 运行名字含 Lexer 的用例
 #   nevext_test -v             # 详细输出
+#   nevext_test --dump         # 打印跨实现通用语料的实际结果，供与 GDScript 对拍
 #
-# 测试零第三方依赖，与 nevext 核心库（header-only）保持同样的可移植性，
-# 详见 cpp/docs/test-plan.md。
+# 测试零第三方依赖，与 nevext 核心库（header-only）保持同样的可移植性。
+# 通用语料（跨 C++ / GDScript 两套实现）见 docs/zh-cn/test-plan.md，
+# C++ 私有用例见 cpp/docs/test-plan.md。
 # ---------------------------------------------------------------------------
 option(NEVEXT_BUILD_TESTS "构建 nevext 单元测试" ON)
 
@@ -37,6 +39,7 @@ if(NEVEXT_BUILD_TESTS)
         test/test_lexer.cpp
         test/test_parser.cpp
         test/test_error.cpp
+        test/test_conformance.cpp
     )
 
     # 核心库与测试辅助均位于这些目录下，头文件由此可按相对或裸名引用

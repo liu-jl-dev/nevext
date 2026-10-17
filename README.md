@@ -42,11 +42,12 @@ playerName '海上生明月'
 
 | 语言 | 状态 | 说明 |
 | --- | --- | --- |
-| C++ | **可用** | header-only，C++20，行为已经过实测验证 |
-| GDScript | **实验性，目前并不标准** | 存在与 C++ 实现已确认的行为偏差，请勿用于生产 |
+| C++ | **可用** | header-only，C++20。参考实现，行为以此为准 |
+| GDScript | **可用（性能受限）** | 行为已与 C++ 实现逐条对齐，并由同一份语料守卫；但大输入性能明显劣化 |
 
-GDScript 版的已知问题（转义会静默丢字符、raw 字符串边界不同、大输入性能劣化）
-记录在 [GDScript 使用指南](./docs/zh-cn/guide-gdscript.md) 中。
+两套实现跑同一份跨实现语料（55 条），定义见
+[跨实现通用测试计划](./docs/zh-cn/test-plan.md)；各实现另有私有套件，
+见 [C++ 测试计划](./cpp/docs/test-plan.md) 与 [GDScript 测试计划](./gdscript/docs/test-plan.md)。
 
 ## 快速开始
 
@@ -88,13 +89,36 @@ var res:Nevext.ParseResult = parser.parse_prog()
 
 - 需要 **Godot 4.x**；
 - Godot 的 `String` 内部为 UTF-32，中文与 emoji 可直接处理，无需转码；
-- 该实现目前**并不标准**，详见 [GDScript 使用指南](./docs/zh-cn/guide-gdscript.md)。
+- 行为与 C++ 实现一致（`TokenType` 枚举项、错误种类与位置、行号统计全部对齐）；
+- 每推进一个字符做一次 `substr()`，属超线性量级，大输入请先评估，
+  详见 [GDScript 使用指南](./docs/zh-cn/guide-gdscript.md)。
+
+## 测试
+
+```bash
+# C++
+cd cpp && cmake -B build && cmake --build build && cd build && ctest -C Debug --output-on-failure
+
+# GDScript（工程根目录为 gdscript/；GODOT 可指定 exe）
+godot --headless --path gdscript --script res://test/test_main.gd
+```
+
+两个套件都支持 `--dump`，按同一行格式打印语料的实际结果，可直接 diff 出实现之间的分歧：
+
+```bash
+diff --strip-trailing-cr \
+     <(./cpp/build/test/nevext_test --dump) \
+     <(godot --headless --path gdscript --script res://test/test_main.gd -- --dump)
+```
 
 ## 文档
 
 - [语法概述](./docs/zh-cn/overview.md) —— 语法规则、转义字符、边界细节
 - [C++ 使用指南](./docs/zh-cn/guide-cpp.md) —— 集成、API、错误处理
-- [GDScript 使用指南](./docs/zh-cn/guide-gdscript.md) —— 集成、API、已知偏差
+- [GDScript 使用指南](./docs/zh-cn/guide-gdscript.md) —— 集成、API、已知缺口
+- [跨实现通用测试计划](./docs/zh-cn/test-plan.md) —— 两套实现共用的语料与断言约定
+- [C++ 测试计划](./cpp/docs/test-plan.md) —— C++ 私有套件（LEX / PAR / ERR）
+- [GDScript 测试计划](./gdscript/docs/test-plan.md) —— GDScript 私有套件与 Godot 踩坑清单
 
 ## 开源协议
 
