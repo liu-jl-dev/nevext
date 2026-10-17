@@ -46,7 +46,7 @@ cpp/
     └── utf.hpp           # UTF-8 / UTF-16 转换工具（本文件由 LLM 生成）
 ```
 
-测试计划见 [cpp/doc/test-plan.md](../../cpp/doc/test-plan.md)。
+测试计划见 [cpp/docs/test-plan.md](../../cpp/docs/test-plan.md)。
 
 **MSVC 注意事项：** MSVC 默认按 ANSI 代码页解析源文件，含中文的 `u"..."` 字面量会被错误
 解码，必须加 `/utf-8` 编译选项。本项目的 `CMakeLists.txt` 已处理：

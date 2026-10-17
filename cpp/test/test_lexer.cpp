@@ -1,6 +1,6 @@
 // 词法分析（Lexer）测试
 //
-// 对应用例编号见 cpp/doc/test-plan.md 的「3. 词法套件 Lexer」。
+// 对应用例编号见 cpp/docs/test-plan.md 的「3. 词法套件 Lexer」。
 // 用例名形如 LEX-xx，与文档中的表格一一对应。
 
 #include <string>

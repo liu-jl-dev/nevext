@@ -1,6 +1,6 @@
 // 语法分析（Parser）测试
 //
-// 对应用例编号见 cpp/doc/test-plan.md 的「4. 语法套件 Parser」。
+// 对应用例编号见 cpp/docs/test-plan.md 的「4. 语法套件 Parser」。
 // 覆盖 overview.md 中规定的语句结构、逗号规则、空语句、末语句省略分号、转义表。
 
 #include <string>

@@ -8,7 +8,7 @@
 
 **目标**
 
-1. 把 `doc/zh-cn/overview.md` 中规定的语法条款固化为可执行断言，规范变更或实现重构时能立刻发现回归。
+1. 把 `docs/zh-cn/overview.md` 中规定的语法条款固化为可执行断言，规范变更或实现重构时能立刻发现回归。
 2. 覆盖手写词法/语法分析最容易出错的地方：缓冲区推进是否为 0（死循环）、行号统计、转义处理、错误恢复、token 视图的生命周期。
 3. 给出明确的运行入口（`ctest`），让这套测试能进 CI。
 
@@ -56,7 +56,7 @@ cpp/
 ├── build.cmd                 # 既有：cmake -B build && cmake --build build
 ├── run01.cmd                 # 既有：跑 demo
 ├── test.cmd                  # 新增：跑单元测试（ctest）
-├── doc/
+├── docs/
 │   └── test-plan.md          # 本文档
 └── test/
     ├── test_framework.hpp    # 断言宏 / 用例注册 / 执行器（header-only）
@@ -98,7 +98,7 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 
 ## 5. 需求 → 用例追溯矩阵
 
-| 规范条款（doc/zh-cn/overview.md） | 对应用例 |
+| 规范条款（docs/zh-cn/overview.md） | 对应用例 |
 | --- | --- |
 | `prog : stmt*`（程序为语句列表） | PAR-01、PAR-05、PAR-10 |
 | 逗号等同空白 | LEX-02、LEX-04、PAR-01、PAR-02 |
@@ -209,10 +209,10 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 | 编号 | 现象 | 状态 | 处置 |
 | --- | --- | --- | --- |
 | **D1** | 语法错误未反映到返回值：`ParseProgram` 顶层遇到 `Unexpected` token 时只写 `parser.errors`，未把 `result` 置为 `Error`（未闭合字符串会「返回成功但内容缺失」） | ✅ 已修复（2026-10-17） | `parser.hpp` 顶层 `else` 分支补 `result = Result::Error;`。ERR-01 / ERR-02 已改为断言 `Error` |
-| **D2** | 未闭合的多行注释被静默吞掉，既不报错也不保留后续内容 | ✅ 已定为规范（2026-10-17） | 不是缺陷：`doc/zh-cn/overview.md` 已明文规定「未闭合的多行注释不是错误，一直延伸到输入结束」。ERR-03 改为断言这一规定；`guide-cpp.md` 的「非错误的情况」也做了说明 |
+| **D2** | 未闭合的多行注释被静默吞掉，既不报错也不保留后续内容 | ✅ 已定为规范（2026-10-17） | 不是缺陷：`docs/zh-cn/overview.md` 已明文规定「未闭合的多行注释不是错误，一直延伸到输入结束」。ERR-03 改为断言这一规定；`guide-cpp.md` 的「非错误的情况」也做了说明 |
 | **D3** | 跨行引号串不推进行号，后续 token / 语句行号整体偏小 | ✅ 已修复（2026-10-17） | `lexer.hpp` 的 `scanQuotedStr` 对串内每个 `\n`（含被反斜杠转义的换行）累加 `line`。新增 LEX-24 / LEX-25 / PAR-17 / ERR-12 作为回归防线 |
 | **D4** | 同一行内的多处错误只报第一条（`Parser::error` 按 `lastErrorLine` 去重） | ✅ 已修复 | 去重逻辑已移除，同行的多处错误全部记录。ERR-05 已改为断言两条消息 |
-| **B1**（非缺陷，契约） | `Token::value` 是 `std::u16string_view`，指向调用方传入的缓冲区 | — | 由 ERR-11 固化契约；`doc/zh-cn/guide-cpp.md` 的生命周期表已说明 |
+| **B1**（非缺陷，契约） | `Token::value` 是 `std::u16string_view`，指向调用方传入的缓冲区 | — | 由 ERR-11 固化契约；`docs/zh-cn/guide-cpp.md` 的生命周期表已说明 |
 
 **修复后的连带影响**
 

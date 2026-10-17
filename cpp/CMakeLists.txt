@@ -25,7 +25,7 @@ add_executable(demo01
 #   nevext_test -v             # 详细输出
 #
 # 测试零第三方依赖，与 nevext 核心库（header-only）保持同样的可移植性，
-# 详见 cpp/doc/test-plan.md。
+# 详见 cpp/docs/test-plan.md。
 # ---------------------------------------------------------------------------
 option(NEVEXT_BUILD_TESTS "构建 nevext 单元测试" ON)
 

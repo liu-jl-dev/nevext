@@ -36,7 +36,7 @@ playerName '海上生明月'
 - 字符串可以用双引号或单引号，也可以完全不加引号；
 - 最后一个语句可以没有分号结尾。
 
-完整的语法规则、转义字符表与边界细节，见 [语法概述](./doc/zh-cn/overview.md)。
+完整的语法规则、转义字符表与边界细节，见 [语法概述](./docs/zh-cn/overview.md)。
 
 ## 实现状态
 
@@ -46,7 +46,7 @@ playerName '海上生明月'
 | GDScript | **实验性，目前并不标准** | 存在与 C++ 实现已确认的行为偏差，请勿用于生产 |
 
 GDScript 版的已知问题（转义会静默丢字符、raw 字符串边界不同、大输入性能劣化）
-记录在 [GDScript 使用指南](./doc/zh-cn/guide-gdscript.md) 中。
+记录在 [GDScript 使用指南](./docs/zh-cn/guide-gdscript.md) 中。
 
 ## 快速开始
 
@@ -71,7 +71,7 @@ header-only，没有 `.lib` / `.dll`，把目录拷进工程即可：
 - 内部统一使用 `std::u16string`（UTF-16），打印或输出前需转成 UTF-8，
   可参考 `cpp/demo/utf.hpp`（该文件由 LLM 生成）；
 - MSVC 必须加 `/utf-8`，否则含中文的 `u"..."` 字面量会被错误解码；
-- 更多细节见 [C++ 使用指南](./doc/zh-cn/guide-cpp.md)。
+- 更多细节见 [C++ 使用指南](./docs/zh-cn/guide-cpp.md)。
 
 ### GDScript
 
@@ -88,35 +88,13 @@ var res:Nevext.ParseResult = parser.parse_prog()
 
 - 需要 **Godot 4.x**；
 - Godot 的 `String` 内部为 UTF-32，中文与 emoji 可直接处理，无需转码；
-- 该实现目前**并不标准**，详见 [GDScript 使用指南](./doc/zh-cn/guide-gdscript.md)。
-
-## 仓库结构
-
-```
-nevext/
-├── LICENSE                 # MIT
-├── cpp/                    # C++ 实现（header-only）
-│   ├── nevext/             # ★ 库本体
-│   │   ├── common.hpp
-│   │   ├── lexer.hpp
-│   │   ├── parser.hpp
-│   │   └── nevext.hpp      # 汇总头
-│   ├── demo/               # CMake 示例工程
-│   └── CMakeLists.txt
-├── gdscript/               # GDScript 实现（同时是一个 Godot 工程）
-│   ├── nevext/nevext.gd    # ★ 库本体
-│   └── test/               # 示例场景
-└── doc/zh-cn/              # 文档
-    ├── overview.md         # 语法概述
-    ├── guide-cpp.md        # C++ 使用指南
-    └── guide-gdscript.md   # GDScript 使用指南
-```
+- 该实现目前**并不标准**，详见 [GDScript 使用指南](./docs/zh-cn/guide-gdscript.md)。
 
 ## 文档
 
-- [语法概述](./doc/zh-cn/overview.md) —— 语法规则、转义字符、边界细节
-- [C++ 使用指南](./doc/zh-cn/guide-cpp.md) —— 集成、API、错误处理
-- [GDScript 使用指南](./doc/zh-cn/guide-gdscript.md) —— 集成、API、已知偏差
+- [语法概述](./docs/zh-cn/overview.md) —— 语法规则、转义字符、边界细节
+- [C++ 使用指南](./docs/zh-cn/guide-cpp.md) —— 集成、API、错误处理
+- [GDScript 使用指南](./docs/zh-cn/guide-gdscript.md) —— 集成、API、已知偏差
 
 ## 开源协议
 
