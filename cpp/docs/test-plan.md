@@ -57,7 +57,6 @@ parser.errors                           // std::vector<std::string>
 cpp/
 ├── CMakeLists.txt            # 新增 nevext_test 目标与 add_test
 ├── build.cmd                 # 既有：cmake -B build && cmake --build build
-├── run01.cmd                 # 既有：跑 demo
 ├── test.cmd                  # 新增：跑单元测试（ctest）
 ├── docs/
 │   └── test-plan.md          # 本文档

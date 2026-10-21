@@ -27,7 +27,6 @@ GCC / Clang 默认即为 UTF-8，无需额外配置。
 cpp/
 ├── CMakeLists.txt        # 构建 demo01 与单元测试 nevext_test
 ├── build.cmd             # cmake -B build && cmake --build build
-├── run01.cmd             # 运行示例
 ├── test.cmd              # 运行单元测试（ctest）
 ├── nevext/               # ★ 库本体，只需拷贝这个目录
 │   ├── common.hpp        # 枚举定义
@@ -124,8 +123,8 @@ statement 2 at line 6:
 
 ```bat
 cd cpp
-./build          :: cmake -B build && cmake --build build
-./run01          :: .\build\Debug\demo01.exe
+./build                    :: cmake -B build && cmake --build build
+./build/Debug/demo01.exe   :: 运行示例
 ```
 
 也可以直接调用 CMake：
