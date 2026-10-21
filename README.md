@@ -117,6 +117,7 @@ diff --strip-trailing-cr \
 - [C++ 使用指南](./docs/zh-cn/guide-cpp.md) —— 集成、API、错误处理
 - [GDScript 使用指南](./docs/zh-cn/guide-gdscript.md) —— 集成、API、已知缺口
 - [跨实现通用测试计划](./docs/zh-cn/test-plan.md) —— 两套实现共用的语料与断言约定
+- [C++ 开发说明](./cpp/docs/development.md) —— 代码格式化配置、目录职责、代码约定、提交前检查清单
 - [C++ 测试计划](./cpp/docs/test-plan.md) —— C++ 私有套件（LEX / PAR / ERR）
 - [GDScript 测试计划](./gdscript/docs/test-plan.md) —— GDScript 私有套件与 Godot 踩坑清单
 

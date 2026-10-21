@@ -4,6 +4,7 @@
 > 测试代码目录：`cpp/test/`
 > **跨实现通用语料不在本文档**：C++ 与 GDScript 共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
 > 落地在 `cpp/test/test_conformance.cpp`。本文档只描述 C++ 私有的 LEX / PAR / ERR 套件。
+> **格式化与开发约定不在本文档**：见 [development.md](./development.md)。
 > 文档最后更新：2026-10-17（新增跨实现一致性套件，整个套件 109 用例 / 769 断言通过）
 
 ## 1. 目标与非目标
