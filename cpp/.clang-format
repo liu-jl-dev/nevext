@@ -1,0 +1,38 @@
+# Nevext 的 C++ 代码风格（clang-format 配置）
+#
+# 为什么放在 cpp/：clang-format 从源文件所在目录逐级向上找配置文件，
+# 放在 C++ 代码树的根上，无论把整个仓库还是单独把 cpp/ 当工作区打开都能找到。
+#
+# 配套：`.vscode/settings.json` 里 "C_Cpp.clang_format_style": "file"，
+#       VSCode 会用本文件格式化，而不是用你全局那个 Chromium（那会污染别的工程）。
+# 命令行：clang-format -i cpp/nevext/*.hpp
+#
+# 来历：cpp/nevext/*.hpp 本来就是按这套风格写的 —— 实测 clang-format 对这几个
+#       文件产生 0 行差异。把列宽放宽到 100 / 120 反而差异更多（会把已经折好的行
+#       又合并回去），所以维持 80。
+#
+# 注意：cpp/test/test_conformance.cpp 的语料表用 // clang-format off/on 圈住，
+#       那是刻意对齐成表格的，别去掉这对标记。
+
+---
+BasedOnStyle: Chromium
+Language: Cpp
+# 取值写法随 clang-format 版本不同（旧版是 `Cpp20`，新版是 `c++20`），
+# 这里用当前配套的版本（cpptools 自带 23.1.1）认的写法。
+Standard: c++20
+
+# 排版
+ColumnLimit: 80
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+NamespaceIndentation: None
+AccessModifierOffset: -1
+
+# 指针/引用贴在类型一侧：`char16_t* p`，不由文件内容猜测
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+# header-only 库，include 顺序是手工安排的（先底层再上层），不要重排
+SortIncludes: false
+IncludeBlocks: Preserve

@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        // C/C++ 智能提示，并自带 clang-format（用它格式化 cpp/.clang-format）
+        "ms-vscode.cpptools",
+        // 仓库根的 CMakeLists 在 cpp/ 下，配合 settings.json 里的 cmake.sourceDirectory
+        "ms-vscode.cmake-tools"
+    ]
+}
