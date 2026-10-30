@@ -2,6 +2,8 @@
 .vscode/
 .workbuddy/
 
+node_modules/
+
 cpp/build/
 gdscript/.godot/
 
