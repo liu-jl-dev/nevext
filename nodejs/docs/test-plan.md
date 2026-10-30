@@ -2,7 +2,7 @@
 
 > 适用范围：`nodejs/nevext/nevext.js`（Node.js，ESM 单文件，零第三方依赖）
 > 测试代码目录：`nodejs/test/`
-> **跨实现通用语料不在本文档**：三套实现共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
+> **跨实现通用语料不在本文档**：五套实现共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
 > 落地在 `nodejs/test/test_conformance.js`。本文档只描述 JS 私有的 `Impl` 套件。
 > 文档最后更新：2026-10-30（初版，60 用例 / 449 断言通过）
 

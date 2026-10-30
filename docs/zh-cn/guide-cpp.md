@@ -135,6 +135,11 @@ cmake --build build
 ./build/Debug/demo01.exe
 ```
 
+demo 不带参数时解析内置示例；传入文件路径则解析该文件（UTF-8）。
+退出码：`0` 解析成功，`1` 有词法 / 语法错误（分别打印 `lexer.errors` 与 `parser.errors`），
+`2` 文件打不开。其余四个实现各有一份使用**同一段输入、同一输出格式**的 demo，
+五份输出可逐字节比对，见 [跨实现通用测试计划](./test-plan.md) 第 5.1 节。
+
 运行单元测试（不需要 demo 的 Windows 控制台设置）：
 
 ```bash

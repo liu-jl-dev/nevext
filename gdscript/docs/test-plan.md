@@ -52,6 +52,9 @@
 gdscript/
 ├── project.godot
 ├── test.cmd                 # Windows 便捷入口（可用 GODOT 环境变量指定 exe）
+├── demo.cmd                 # Windows 便捷入口：跑示例
+├── demo/
+│   └── demo01.gd            # 可运行示例（extends SceneTree）
 └── test/
     ├── test_main.gd         # 入口：解析参数 → register → run_all → quit(code)
     ├── test_framework.gd    # 断言 / 注册表 / 执行器

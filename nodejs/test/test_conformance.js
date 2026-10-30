@@ -4,7 +4,7 @@
 //
 // 语料与期望值定义在 docs/zh-cn/test-plan.md 第 3 节；C++ 侧见
 // cpp/test/test_conformance.cpp，GDScript 侧见 gdscript/test/test_conformance.gd。
-// 三边必须完全一致：ID、输入、pause 开关、期望的返回值/产物/错误序列。
+// 各实现必须完全一致：ID、输入、pause 开关、期望的返回值/产物/错误序列。
 // 本文件只做「驱动」，不含任何期望值推导；期望值全部来自文档表格。
 //
 // 输入与期望串一律用 JS 转义书写：\n \r \t \v \b \f \\ \" \'，非 ASCII 一律

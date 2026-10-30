@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Nevext C# 示例程序（demo/Demo01.cs）的独立工程。
+    库本体是单文件，直接以相对路径编进来；零第三方依赖，无 NuGet 引用。
+    测试工程见 csharp/nevext.csproj，两者互不包含，Main 不会冲突。
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>nevext_demo</AssemblyName>
+    <RootNamespace>NevextDemo</RootNamespace>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- 显式列出源文件，禁用 SDK 的默认通配包含 -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Demo01.cs" />
+    <Compile Include="../nevext/Nevext.cs" />
+  </ItemGroup>
+
+</Project>

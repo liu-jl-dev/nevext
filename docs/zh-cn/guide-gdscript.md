@@ -31,11 +31,14 @@ Nevext 的 GDScript 实现只有一个文件，`class_name Nevext` 会注册为�
 gdscript/
 ├── project.godot            # 工程配置（工程名 nevext-demo）
 ├── test.cmd                 # Windows 便捷入口：跑全部测试
+├── demo.cmd                 # Windows 便捷入口：跑示例
 ├── icon.svg                 # 工程图标
 ├── nevext/
 │   └── nevext.gd            # ★ 库本体，只需拷贝这个文件
 ├── docs/
 │   └── test-plan.md         # GDScript 私有测试计划
+├── demo/
+│   └── demo01.gd            # 可运行示例（extends SceneTree）
 └── test/
     ├── test_main.gd         # 测试入口（extends SceneTree）
     ├── test_framework.gd    # 零依赖断言框架
@@ -312,6 +315,30 @@ Godot 的输出面板与 `print()` 均为 UTF-8，无需额外设置。
 | **逗号等同空格** | `a, b` 与 `a b` 解析结果相同，这是语法规定而非 bug |
 | **脚本参数要加 `--`** | `--script x.gd -- --dump`；否则引擎自己吃掉参数 |
 
+## 运行示例
+
+[`gdscript/demo/demo01.gd`](../../gdscript/demo/demo01.gd) 是可直接运行的完整示例，
+与 C++ / GDScript / JavaScript / C# / Python 五份 demo 使用同一段输入与同一输出格式：
+
+```bash
+# 内置示例
+godot --headless --path gdscript --script res://demo/demo01.gd
+
+# 解析指定文件（UTF-8）；注意 -- 之后才是脚本参数
+godot --headless --path gdscript --script res://demo/demo01.gd -- 某个文件.txt
+
+# Windows 便捷入口
+gdscript\demo.cmd [文件]
+```
+
+> **相对路径的基准是 Godot 工程目录**：带 `--path gdscript` 时，`FileAccess.open()` 的相对路径
+> 解析到 `gdscript/`，而不是调用者的当前目录。传相对路径找不到文件时请改用绝对路径
+> （`gdscript\demo.cmd` 已先 `cd` 到工程目录，同样遵守这一规则）。
+
+退出码：`0` 解析成功；`1` 有词法 / 语法错误（分别打印 `lexer.errors` 与 `parser.errors`
+两个容器）；`2` 文件打不开。五份 demo 输出的逐字节比对见
+[跨实现通用测试计划](./test-plan.md) 第 5.1 节。
+
 ## 测试
 
 - 跨实现通用语料：`gdscript/test/test_conformance.gd`，55 条，定义见
@@ -319,7 +346,8 @@ Godot 的输出面板与 `print()` 均为 UTF-8，无需额外设置。
 - GDScript 私有用例：`gdscript/test/test_impl.gd`，覆盖可替换的 `escape_func`、实例复用、
   终止性（病态串的全部前缀）、长裸串、大量语句
 - 计划与基线：[gdscript/docs/test-plan.md](../../gdscript/docs/test-plan.md)
-- 与 C++ 侧对照：见通用测试计划第 5 节的 `--dump` + `diff --strip-trailing-cr`
+- 与 C++ 侧对照：见通用测试计划第 5 节的 `--dump` + `diff --strip-trailing-cr`，
+  以及第 5.1 节的 demo 门禁
 
 ## 许可
 

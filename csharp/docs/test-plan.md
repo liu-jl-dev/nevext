@@ -2,7 +2,7 @@
 
 > 适用范围：`csharp/nevext/Nevext.cs`（.NET，C# 单文件，零第三方依赖）
 > 测试代码目录：`csharp/test/`
-> **跨实现通用语料不在本文档**：四套实现共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
+> **跨实现通用语料不在本文档**：五套实现共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
 > 落地在 `csharp/test/TestConformance.cs`。本文档只描述 C# 私有的 `Impl` 套件。
 > 文档最后更新：2026-10-30（初版，60 用例 / 449 断言通过）
 
@@ -48,7 +48,7 @@
    C# 用「完整字符串 + `_pos` 游标 + `Substring` 一次性取 token」，行为一致且整体 O(n)。
    `Reset` 同时复位游标。
 3. **错误消息逐字对齐 C++**（含句号后的空格，消息常量收敛为 `Lexer.UnclosedMessage` 等
-   三个 `const`），一致性断言通过「消息 → (行号, 种类)」映射比较，与另三套相同。
+   三个 `const`），一致性断言通过「消息 → (行号, 种类)」映射比较，与另四套相同。
 4. **dump 的 `Show()` 必须与 C++ 的 `EscapeVisible` 逐项一致**：六个具名控制字符
    （`\n` `\r` `\t` `\v` `\b` `\f`）、反斜杠翻倍、其余控制字符 `\xNN`（大写两位十六进制）；
    引号在 Show 之后再转义（「先反斜杠、后引号」）。JS 侧第一版就漏过这两类，
@@ -106,6 +106,10 @@ csharp/
 │   └── TestMain.cs         # 入口：--dump / 筛选 / 退出码
 ├── nevext.csproj           # 单一工程：库 + 测试编进一个可执行文件
 ├── test.cmd                # Windows 便捷入口（构建 + 直接跑 exe）
+├── demo.cmd                # Windows 便捷入口：构建 + 跑示例
+├── demo/
+│   ├── Demo01.cs           # 可运行示例
+│   └── Demo01.csproj       # 示例的独立工程（只编自身与 ../nevext/Nevext.cs）
 ├── .gitignore              # bin/ obj/
 └── docs/test-plan.md       # 本文档
 ```

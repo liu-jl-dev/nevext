@@ -92,6 +92,21 @@ parser.reset(lexer2);            // 重绑词法器并清空 errors，复用对�
 同一行的多处错误各记一条，不做去重。复用 `Parser` 前请调用 `parser.reset(...)`，
 只有 `reset` 会清空错误容器。
 
+## 运行示例
+
+[`nodejs/demo/demo01.js`](../../nodejs/demo/demo01.js) 是可直接运行的完整示例，
+与 C++ / GDScript / JavaScript / C# / Python 五份 demo 使用同一段输入与同一输出格式：
+
+```bash
+node nodejs/demo/demo01.js                # 内置示例
+node nodejs/demo/demo01.js 某个文件.txt    # 解析该文件（UTF-8）
+nodejs\demo.cmd [文件]                    # Windows 便捷入口
+```
+
+退出码：`0` 解析成功；`1` 有词法 / 语法错误（分别打印 `lexer.errors` 与 `parser.errors`
+两个容器）；`2` 文件打不开。五份 demo 输出的逐字节比对见
+[跨实现通用测试计划](./test-plan.md) 第 5.1 节。
+
 ## 已知限制
 
 - **面向 Node.js**：实现本体是纯 JS（无 Node 专有 API），嵌入浏览器等环境理论上可行

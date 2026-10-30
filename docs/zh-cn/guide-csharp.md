@@ -103,6 +103,22 @@ public static (Result Err, string Val, string Reason) ExpandEscapes(string src);
 
 除命名与返回值形态外，三者行为契约完全一致。
 
+## 运行示例
+
+[`csharp/demo/Demo01.cs`](../../csharp/demo/Demo01.cs) 是可直接运行的完整示例（独立工程
+`demo/Demo01.csproj`，只编译自身与 `nevext/Nevext.cs`），与另外四份 demo 使用同一段输入
+与同一输出格式：
+
+```bash
+dotnet run --project csharp/demo                   # 内置示例
+dotnet run --project csharp/demo -- 某个文件.txt    # 解析该文件（UTF-8）
+csharp\demo.cmd [文件]                             # Windows 便捷入口
+```
+
+退出码：`0` 解析成功；`1` 有词法 / 语法错误（分别打印 `Lexer.Errors` 与 `Parser.Errors`
+两个容器）；`2` 文件打不开。五份 demo 输出的逐字节比对见
+[跨实现通用测试计划](./test-plan.md) 第 5.1 节。
+
 ## 已知限制
 
 - **.NET 系运行时**：实现本体只用基础 BCL API，Unity / Mono 理论上可直接内嵌，
