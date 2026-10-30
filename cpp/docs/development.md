@@ -161,7 +161,7 @@ cd cpp && cmake -B build && cmake --build build && ctest -C Debug --output-on-fa
 ## 5. 提交前检查清单
 
 1. **测试通过**：`ctest -C Debug --output-on-failure` 全绿
-   （基线：C++ 109 用例 / 769 断言）。
+   （基线：C++ 111 用例 / 796 断言）。
 2. **两套实现仍然一致**（改过 `cpp/nevext/` 时必做）：
 
    ```bash

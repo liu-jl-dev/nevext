@@ -180,6 +180,7 @@ struct Lexer {
   std::vector<std::string> errors;            // 词法错误
   Lexer(std::u16string& input);               // 只接受非 const 左值引用
   Token NextToken();                          // 取出下一个 token
+  void Reset(std::u16string& input);          // 换新输入复用：行号与错误容器归零
 };
 ```
 
@@ -200,10 +201,18 @@ struct Parser {
   Lexer* lexer;                         // 裸指针，不拥有所有权
   std::vector<std::string> errors;      // 语法 / 转义错误
   Parser(Lexer& lexer);
+  void Reset(Lexer& lexer);             // 重绑词法器并清空 errors，复用对象
 
   Result ParseProgram(Program& prog, bool pauseWhenError = true);
 };
 ```
+
+**`Reset` 与对象复用**
+
+`Lexer::Reset(input)` 把行号、缓冲区视图与错误容器全部还原，`Parser::Reset(lexer)`
+重绑词法器并清空 `errors`。两者配合可让同一组对象连续解析多份源码，行为与
+重新构造完全一致（与 GDScript 实现的 `reset` 对应）。注意 `prog` 容器不由
+`Reset` 清空——它本来就是调用方自己的输出缓冲。
 
 **`ParseProgram` 参数**
 

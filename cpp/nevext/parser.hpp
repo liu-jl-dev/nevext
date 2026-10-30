@@ -12,7 +12,14 @@ struct Parser {
   Lexer* lexer;
   Token curToken;
   std::vector<std::string> errors;
-  Parser(Lexer& lexer) : lexer(&lexer) {}
+  Parser(Lexer& lexer) { Reset(lexer); }
+  // 复用同一对象解析新的输入：重绑词法器并清空上一轮的错误记录
+  // （与 GDScript 实现的 Parser.reset 对应）。curToken 无需手动还原——
+  // 下一轮第一次 NextToken 会立即覆盖它。
+  void Reset(Lexer& lexer) {
+    this->lexer = &lexer;
+    errors.clear();
+  }
   Result ParseProgram(Program& prog, bool pauseWhenError = true) {
     Result result = Result::Success;
     for (;;) {

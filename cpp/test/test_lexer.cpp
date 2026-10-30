@@ -338,5 +338,47 @@ NEVEXT_TEST(Lexer, EscapedNewlineInsideQuotedStringCountsAsLine) {
   CHECK_EQ(expect, tokens.at(0).value);
 }
 
+// ---------------------------------------------------------------- LEX-26
+// Reset 复用：扫过带错误与跨行内容的输入后，Reset 应把行号、错误容器与
+// 缓冲区视图全部还原，之后的表现与全新构造的词法器完全一致
+NEVEXT_TEST(Lexer, ResetRestoresInitialState) {
+  // 跨行引号串未闭合：行号推进到 2，并留下 1 条词法错误
+  std::u16string first = u"a \"b\nc";
+  Nevext::Lexer lexer(first);
+  for (int i = 0; i < 16; ++i) {
+    if (lexer.NextToken().type == TokenType::EndOfFile)
+      break;
+  }
+  CHECK_TRUE(lexer.line > 1);
+  CHECK_EQ(std::size_t(1), lexer.errors.size());
+
+  // 第二份输入里含跨行引号串：Reset 后必须像新对象一样从头计数
+  std::u16string second = u"x; \"y\nz\"";
+  lexer.Reset(second);
+  CHECK_EQ(1, lexer.line);
+  CHECK_EQ(std::size_t(0), lexer.errors.size());
+
+  std::vector<TokenSnapshot> tokens;
+  for (int i = 0; i < 16; ++i) {
+    Nevext::Token token = lexer.NextToken();
+    tokens.push_back(
+        TokenSnapshot{token.line, token.type, std::u16string(token.value)});
+    if (token.type == TokenType::EndOfFile)
+      break;
+  }
+  ExpectTypeSeq(ctx, tokens,
+                {{1, TokenType::RawStr},
+                 {1, TokenType::Sep},
+                 {1, TokenType::QuotedStr},
+                 {2, TokenType::EndOfFile}});
+
+  std::u16string expect;
+  expect += u'y';
+  expect += u'\n';
+  expect += u'z';
+  CHECK_EQ(expect, tokens.at(2).value);
+  CHECK_EQ(std::size_t(0), lexer.errors.size());
+}
+
 }  // namespace
 }  // namespace nevext_test

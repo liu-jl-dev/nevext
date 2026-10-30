@@ -227,5 +227,32 @@ NEVEXT_TEST(Parser, StatementLineAfterMultiLineQuotedString) {
   ExpectProgram(ctx, out.prog, {{1, {first}}, {2, {u"c"}}, {3, {u"d"}}});
 }
 
+// ---------------------------------------------------------------- PAR-18
+// Parser.Reset 复用：同一组对象解析第二份源码时，结果必须与全新构造完全
+// 一致，且上一轮的错误记录被清空（与 GDScript 的 reset 系列对齐）
+NEVEXT_TEST(Parser, ResetAllowsReuse) {
+  // 第一轮：非法转义 -> 返回 Error 且 parser.errors 留有记录
+  std::u16string first = u"a \"\\q\";";
+  Nevext::Lexer lexer(first);
+  Nevext::Parser parser(lexer);
+  Program firstProg;
+  CHECK_TRUE(parser.ParseProgram(firstProg, true) == Result::Error);
+  CHECK_EQ(std::size_t(1), firstProg.size());
+  CHECK_EQ(std::size_t(1), parser.errors.size());
+
+  // 第二轮：Reset 后同一组对象要表现得和全新构造一样
+  std::u16string second = u"c; d";
+  lexer.Reset(second);
+  parser.Reset(lexer);
+  CHECK_EQ(std::size_t(0), parser.errors.size());
+  CHECK_EQ(std::size_t(0), lexer.errors.size());
+
+  Program secondProg;
+  CHECK_TRUE(parser.ParseProgram(secondProg, true) == Result::Success);
+  ExpectProgram(ctx, secondProg, {{1, {u"c"}}, {1, {u"d"}}});
+  CHECK_EQ(std::size_t(0), parser.errors.size());
+  CHECK_EQ(1, lexer.line);
+}
+
 }  // namespace
 }  // namespace nevext_test

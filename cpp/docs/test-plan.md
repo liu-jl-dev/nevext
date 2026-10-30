@@ -5,7 +5,8 @@
 > **跨实现通用语料不在本文档**：C++ 与 GDScript 共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
 > 落地在 `cpp/test/test_conformance.cpp`。本文档只描述 C++ 私有的 LEX / PAR / ERR 套件。
 > **格式化与开发约定不在本文档**：见 [development.md](./development.md)。
-> 文档最后更新：2026-10-17（新增跨实现一致性套件，整个套件 109 用例 / 769 断言通过）
+> 文档最后更新：2026-10-30（新增 LEX-26 / PAR-18：`Lexer::Reset` 与 `Parser::Reset`
+> 对象复用；整个套件 111 用例 / 796 断言通过）
 
 ## 1. 目标与非目标
 
@@ -65,8 +66,8 @@ cpp/
     ├── test_framework.hpp    # 断言宏 / 用例注册 / 执行器（header-only）
     ├── test_util.hpp         # Run() / LexAll() / Expect*() 辅助
     ├── test_main.cpp         # main → RunAll，并处理 --dump
-    ├── test_lexer.cpp        # 词法套件（LEX-01 ~ LEX-25）
-    ├── test_parser.cpp       # 语法套件（PAR-01 ~ PAR-17）
+    ├── test_lexer.cpp        # 词法套件（LEX-01 ~ LEX-26）
+    ├── test_parser.cpp       # 语法套件（PAR-01 ~ PAR-18）
     ├── test_error.cpp        # 错误处理与健壮性套件（ERR-01 ~ ERR-12）
     └── test_conformance.cpp  # 跨实现通用语料（Conformance.A01 ~ H04，见 docs/zh-cn/test-plan.md）
 ```
@@ -99,7 +100,7 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 ./nevext_test.exe
 ```
 
-**当前基线（MinGW GCC 15.2，C++20）**：109 个用例 / 769 条断言全部通过。
+**当前基线（MinGW GCC 15.2，C++20）**：111 个用例 / 796 条断言全部通过。
 其中 55 个是跨实现通用语料（`Conformance.*`），由 `docs/zh-cn/test-plan.md` 定义。
 
 ## 5. 需求 → 用例追溯矩阵
@@ -125,7 +126,7 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 
 ## 6. 用例清单
 
-### 6.1 词法套件 `Lexer`（25 个，test_lexer.cpp）
+### 6.1 词法套件 `Lexer`（26 个，test_lexer.cpp）
 
 | ID | 用例名 | 输入要点 | 期望要点 |
 | --- | --- | --- | --- |
@@ -154,8 +155,9 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 | LEX-23 | `QuotedStringCanCrossLines` | `"a<换行>b" c` | 值含真实换行；后续 token 位于第 2 行 |
 | LEX-24 | `LineCountingContinuesAfterMultiLineQuotedString` | `"a<换行>b"<换行>c;` | 串内换行 + 串后换行累计，`c` 在第 3 行 |
 | LEX-25 | `EscapedNewlineInsideQuotedStringCountsAsLine` | `"a\<换行>b"<换行>c` | 被反斜杠转义的换行也是物理换行，同样计数 |
+| LEX-26 | `ResetRestoresInitialState` | 先扫一份带未闭合引号串的跨行输入，再 `Reset` 换新输入 | 行号与错误容器归零；新输入的 token 流与全新构造完全一致 |
 
-### 6.2 语法套件 `Parser`（17 个，test_parser.cpp）
+### 6.2 语法套件 `Parser`（18 个，test_parser.cpp）
 
 | ID | 用例名 | 输入要点 | 期望要点 |
 | --- | --- | --- | --- |
@@ -176,6 +178,7 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 | PAR-15 | `Demo01InputRegression` | `demo/demo01.cpp` 的输入 | 与既有 demo 行为一致（2 语句，行号 2 与 6） |
 | PAR-16 | `ResultSuccessIsZero` | — | `Success == 0`、`Error == 1`，可直接写作 `if (result)` |
 | PAR-17 | `StatementLineAfterMultiLineQuotedString` | `"a<换行>b"; c;<换行>d;` | 三条语句行号分别为 1 / 2 / 3（D3 回归防线） |
+| PAR-18 | `ResetAllowsReuse` | 第一轮解析带非法转义的输入（留下错误），`Reset` 后解析 `c; d` | 第二轮返回 `Success`、两个错误容器为空、语句与全新构造一致（对应 GDScript 的 IMP-02） |
 
 ### 6.3 错误处理与健壮性套件 `Error`（12 个，test_error.cpp）
 

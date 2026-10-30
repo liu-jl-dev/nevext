@@ -17,9 +17,13 @@ struct Lexer {
   int line;
   std::u16string_view input;
   std::vector<std::string> errors;
-  Lexer(std::u16string& input) {
-    this->line = 1;
+  Lexer(std::u16string& input) { Reset(input); }
+  // 复用同一对象解析新的输入：行号、缓冲区视图与错误容器全部回到初始状态，
+  // 等价于重新构造一个 Lexer（与 GDScript 实现的 Lexer.reset 对应）。
+  void Reset(std::u16string& input) {
+    line = 1;
     this->input = input;
+    errors.clear();
   }
   Token NextToken() {
     skipWs();
