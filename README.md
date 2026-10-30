@@ -44,10 +44,15 @@ playerName '海上生明月'
 | --- | --- | --- |
 | C++ | **可用** | header-only，C++20。参考实现，行为以此为准 |
 | GDScript | **可用（性能受限）** | 行为已与 C++ 实现逐条对齐，并由同一份语料守卫；但大输入性能明显劣化 |
+| JavaScript | **可用** | Node.js，零依赖单文件（ESM）。行为与 C++ 逐条对齐，游标式扫描整体 O(n) |
+| C# | **可用** | .NET，零依赖单文件（`namespace Nevext`）。行为与 C++ 逐条对齐，游标式扫描整体 O(n) |
 
-两套实现跑同一份跨实现语料（55 条），定义见
+四套实现跑同一份跨实现语料（55 条），定义见
 [跨实现通用测试计划](./docs/zh-cn/test-plan.md)；各实现另有私有套件，
-见 [C++ 测试计划](./cpp/docs/test-plan.md) 与 [GDScript 测试计划](./gdscript/docs/test-plan.md)。
+见 [C++ 测试计划](./cpp/docs/test-plan.md)、
+[GDScript 测试计划](./gdscript/docs/test-plan.md)、
+[JavaScript 测试计划](./nodejs/docs/test-plan.md) 与
+[C# 测试计划](./csharp/docs/test-plan.md)。
 
 ## 快速开始
 
@@ -93,6 +98,50 @@ var res:Nevext.ParseResult = parser.parse_prog()
 - 每推进一个字符做一次 `substr()`，属超线性量级，大输入请先评估，
   详见 [GDScript 使用指南](./docs/zh-cn/guide-gdscript.md)。
 
+### JavaScript（Node.js）
+
+零依赖单文件（ESM），把 `nodejs/nevext/nevext.js` 拷进工程即可：
+
+```js
+import { Lexer, Parser, Result } from './nevext/nevext.js';
+
+const parser = new Parser(new Lexer('windowSize 1280, 720;'));
+const res = parser.parseProgram();
+if (res.err === Result.Error) console.error(parser.errors);
+// res.val -> [{ line: 1, strings: ['windowSize', '1280', '720'] }]
+```
+
+要点：
+
+- 需要 **Node.js**（任意近期版本），零第三方依赖；
+- JS 字符串即 UTF-16 码元序列，中文与 emoji 可直接处理，无需转码；
+- 行为与 C++ 实现一致；语句列表走 `parseProgram()` 的返回值（`{ err, val }`），
+  不像 C++ 用出参；
+- 采用「完整字符串 + 游标」扫描，整体 O(n)，大输入无码元级性能悬崖；
+- 更多细节见 [JavaScript 使用指南](./docs/zh-cn/guide-nodejs.md)。
+
+### C#（.NET）
+
+零依赖单文件，把 `csharp/nevext/Nevext.cs` 拷进工程即可（`namespace Nevext`）：
+
+```csharp
+using Nevext;
+
+var parser = new Parser(new Lexer("windowSize 1280, 720;"));
+var res = parser.ParseProgram();
+if (res.Err == Result.Error) Console.Error.WriteLine(string.Join("\n", parser.Errors));
+// res.Val -> [{ Line = 1, Strings = ["windowSize", "1280", "720"] }]
+```
+
+要点：
+
+- 需要 **.NET**（本仓库用 SDK 10 验证），零第三方依赖、无 NuGet 引用；
+- C# 字符串即 UTF-16 码元序列，中文与 emoji 可直接处理，无需转码；
+- 命名与 C++ 参考实现同为 PascalCase；语句列表走 `ParseProgram()` 的返回值
+  （`ParseResult.Val`），不像 C++ 用出参；
+- 采用「完整字符串 + 游标」扫描，整体 O(n)；
+- 更多细节见 [C# 使用指南](./docs/zh-cn/guide-csharp.md)。
+
 ## 测试
 
 ```bash
@@ -101,14 +150,28 @@ cd cpp && cmake -B build && cmake --build build && cd build && ctest -C Debug --
 
 # GDScript（工程根目录为 gdscript/；GODOT 可指定 exe）
 godot --headless --path gdscript --script res://test/test_main.gd
+
+# JavaScript（Node.js）
+node nodejs/test/test_main.js
+
+# C#（.NET）
+csharp\test.cmd
 ```
 
-两个套件都支持 `--dump`，按同一行格式打印语料的实际结果，可直接 diff 出实现之间的分歧：
+各套件都支持 `--dump`，按同一行格式打印语料的实际结果，两两 diff 即可显形实现之间的分歧：
 
 ```bash
 diff --strip-trailing-cr \
      <(./cpp/build/test/nevext_test --dump) \
+     <(node nodejs/test/test_main.js --dump)
+
+diff --strip-trailing-cr \
+     <(./cpp/build/test/nevext_test --dump) \
      <(godot --headless --path gdscript --script res://test/test_main.gd -- --dump)
+
+diff --strip-trailing-cr \
+     <(./cpp/build/test/nevext_test --dump) \
+     <(csharp/bin/Release/net10.0/nevext_test.exe --dump)
 ```
 
 ## 文档
@@ -116,10 +179,14 @@ diff --strip-trailing-cr \
 - [语法概述](./docs/zh-cn/overview.md) —— 语法规则、转义字符、边界细节
 - [C++ 使用指南](./docs/zh-cn/guide-cpp.md) —— 集成、API、错误处理
 - [GDScript 使用指南](./docs/zh-cn/guide-gdscript.md) —— 集成、API、已知缺口
-- [跨实现通用测试计划](./docs/zh-cn/test-plan.md) —— 两套实现共用的语料与断言约定
+- [JavaScript 使用指南](./docs/zh-cn/guide-nodejs.md) —— 集成、API、已知限制
+- [C# 使用指南](./docs/zh-cn/guide-csharp.md) —— 集成、API、已知限制
+- [跨实现通用测试计划](./docs/zh-cn/test-plan.md) —— 四套实现共用的语料与断言约定
 - [C++ 开发说明](./cpp/docs/development.md) —— 代码格式化配置、目录职责、代码约定、提交前检查清单
 - [C++ 测试计划](./cpp/docs/test-plan.md) —— C++ 私有套件（LEX / PAR / ERR）
 - [GDScript 测试计划](./gdscript/docs/test-plan.md) —— GDScript 私有套件与 Godot 踩坑清单
+- [JavaScript 测试计划](./nodejs/docs/test-plan.md) —— JS 私有套件与实现要点
+- [C# 测试计划](./csharp/docs/test-plan.md) —— C# 私有套件与实现要点
 
 ## 开源协议
 

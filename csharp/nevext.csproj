@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Nevext C# 实现的单一工程：库本体（nevext/Nevext.cs，单文件，拷走即用）
+    与测试套件（test/）编进同一个可执行文件。零第三方依赖，无 NuGet 引用。
+    测试入口：dotnet run 加 project 参数指向本目录（或直接跑 csharp/test.cmd），
+    测试程序自己的参数见 test/TestMain.cs 头注释。
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>nevext_test</AssemblyName>
+    <RootNamespace>NevextTest</RootNamespace>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- 显式列出源文件，禁用 SDK 的默认通配包含 -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="nevext/**/*.cs" />
+    <Compile Include="test/**/*.cs" />
+  </ItemGroup>
+
+</Project>

@@ -1,21 +1,24 @@
 # Nevext 跨实现通用测试计划
 
-> 适用范围：`cpp/nevext/`（C++20，header-only）与 `gdscript/nevext/`（Godot 4.x GDScript）
-> 通用语料落地位置：`cpp/test/test_conformance.cpp`、`gdscript/test/test_conformance.gd`
-> 各实现私有计划：C++ 见 `cpp/docs/test-plan.md`；GDScript 见 `gdscript/docs/test-plan.md`
-> 最后更新：2026-10-17
+> 适用范围：`cpp/nevext/`（C++20，header-only）、`gdscript/nevext/`（Godot 4.x GDScript）、
+> `nodejs/nevext/`（Node.js，ESM 单文件）与 `csharp/nevext/`（.NET，C# 单文件）
+> 通用语料落地位置：`cpp/test/test_conformance.cpp`、`gdscript/test/test_conformance.gd`、
+> `nodejs/test/test_conformance.js`、`csharp/test/TestConformance.cs`
+> 各实现私有计划：C++ 见 `cpp/docs/test-plan.md`；GDScript 见 `gdscript/docs/test-plan.md`；
+> JavaScript 见 `nodejs/docs/test-plan.md`；C# 见 `csharp/docs/test-plan.md`
+> 最后更新：2026-10-30（新增 C# 实现）
 
 ## 1. 为什么需要这份文档
 
-Nevext 有两套独立实现。两处的算法各自演化，很容易在以下地方悄悄分叉：
+Nevext 有四套独立实现。各处的算法各自演化，很容易在以下地方悄悄分叉：
 
 - 裸串的终止字符集（多一个字符、少一个字符，肉眼极难发现）；
 - 转义在词法层还是语法层展开（决定原始串里 `\n` 的去向）；
 - 错误是否被记录、报在第几行、是否会因为「按行去重」而被吞掉；
 - `pauseWhenError` 开关在出错时保留多少语句。
 
-本文件定义**一份与语言无关的通用语料**，两套实现各自用本机代码实现同一批用例、断言同一批期望值。
-只要语料的 ID 与期望值不变，两套实现就不可能在上述分叉点上各自漂移而不被发现。
+本文件定义**一份与语言无关的通用语料**，各套实现各自用本机代码实现同一批用例、断言同一批期望值。
+只要语料的 ID 与期望值不变，任何一套实现就不可能在上述分叉点上各自漂移而不被发现。
 
 **角色划分**
 
@@ -28,7 +31,7 @@ Nevext 有两套独立实现。两处的算法各自演化，很容易在以下�
 
 ### 2.1 被测 API 面
 
-两套实现必须都能按下述方式驱动（名字可随语言习惯调整，语义必须一致）：
+各套实现必须都能按下述方式驱动（名字可随语言习惯调整，语义必须一致）：
 
 | 环节 | C++ | GDScript |
 | --- | --- | --- |
@@ -58,7 +61,7 @@ Nevext 有两套独立实现。两处的算法各自演化，很容易在以下�
 | `InvalidEscape` | 转义序列非法（转义表中没有该字符） | 语法层，报在**该引号串起始**所在行 |
 | `UnexpectedToken` | 语法层读到了 `Unexpected` token | 语法层，报在**该 token 起始**所在行 |
 
-各实现内部仍保留人类可读消息（两侧目前措辞一致），测试时用一个「消息 → 种类」的映射函数转换，
+各实现内部仍保留人类可读消息（各套目前措辞一致），测试时用一个「消息 → 种类」的映射函数转换，
 参考实现里形如 `cpp/test/test_util.hpp` 的 `ErrorKind()`。改措辞不需要改用例。
 
 ### 2.4 不可跨实现断言的东西
@@ -68,7 +71,7 @@ Nevext 有两套独立实现。两处的算法各自演化，很容易在以下�
 - `Token::value` 的生命周期（C++ 是缓冲区视图，GDScript 是独立字符串）；
 - 非 BMP 字符的**内部码元数**（C++ 内部是 UTF-16 代理对，GDScript 是 UTF-32 单码元）——
   通用语料只断言最终字符串**内容相等**，不断言长度；
-- 性能：两套实现的字符串模型不同，数量级差异属正常（长输入用例只进各自的私有套件）。
+- 性能：各实现的字符串模型不同，数量级差异属正常（长输入用例只进各自的私有套件）。
 
 ## 3. 通用语料
 
@@ -139,7 +142,7 @@ Nevext 有两套独立实现。两处的算法各自演化，很容易在以下�
 | D09 | `"a//b"` | true | OK | `1:["a//b"]` | 无 |
 | D10 | `a\bb` | false | OK | `1:["a\bb"]` | 无 |
 
-> D10 是防止两侧「raw_str_end_chars 集合不一致」回归的关键用例：退格**不是**终止字符，整串是一个裸串。
+> D10 是防止各套「raw_str_end_chars 集合不一致」回归的关键用例：退格**不是**终止字符，整串是一个裸串。
 
 ### 3.6 E 组：注释
 
@@ -191,7 +194,7 @@ Nevext 有两套独立实现。两处的算法各自演化，很容易在以下�
 | H04 | `海上生明月 天涯共此时` | true | OK | `1:["海上生明月","天涯共此时"]` | 无 |
 
 > H02 覆盖非 BMP 字符：C++ 内部走 UTF-16 代理对，GDScript 内部是 UTF-32 单码元，
-> 但双方产出的字符串**内容必须逐字节相等**。为保证源文件不受编码影响，两侧都用运行时构造 / 通用字符名
+> 但双方产出的字符串**内容必须逐字节相等**。为保证源文件不受编码影响，各实现都用运行时构造 / 通用字符名
 > 转义（C++ `\U0001F600`，GDScript `char(0x1F600)`）来生成输入。
 > H03 保证单个引号既不崩溃也不死循环。
 
@@ -229,11 +232,13 @@ Nevext 有两套独立实现。两处的算法各自演化，很容易在以下�
 | --- | --- | --- | --- |
 | C++ | `cpp/test/test_conformance.cpp`（套件名 `Conformance`） | `ctest --test-dir build -C Debug` 或 `./build/test/nevext_test Conformance` | `cpp/docs/test-plan.md` |
 | GDScript | `gdscript/test/test_conformance.gd`（套件名 `Conformance`） | `godot --headless --path gdscript --script res://test/test_main.gd` | `gdscript/docs/test-plan.md` |
+| JavaScript | `nodejs/test/test_conformance.js`（套件名 `Conformance`） | `node nodejs/test/test_main.js Conformance`（或 `nodejs\test.cmd`） | `nodejs/docs/test-plan.md` |
+| C# | `csharp/test/TestConformance.cs`（套件名 `Conformance`） | `csharp\test.cmd Conformance`（或 `dotnet run --project csharp`） | `csharp/docs/test-plan.md` |
 
-两侧用例名统一为 `Conformance.A01` … `Conformance.H04`，与第 3 节的 ID 一一对应，
+各套用例名统一为 `Conformance.A01` … `Conformance.H04`，与第 3 节的 ID 一一对应，
 便于 `Conformance.C0` 这样按前缀筛选用例。
 
-**跨实现对照**：两套测试都支持 dump 模式，按同一行格式打印全部语料的实际结果：
+**跨实现对照**：各套测试都支持 dump 模式，按同一行格式打印全部语料的实际结果：
 
 ```
 <ID>|<OK|Err>|<program>|<errors>|pause=<0|1>
@@ -244,12 +249,21 @@ Nevext 有两套独立实现。两处的算法各自演化，很容易在以下�
 （否则 B05 这种含引号的结果会让整行不可解析）。转义顺序必须是「先反斜杠、后引号」。
 
 ```bash
-# 两侧各跑一次 dump，再逐行 diff —— 只要实现分叉就会显形。
-# Windows 上 C++ 侧的 stdout 走文本模式会把 \n 翻译成 CRLF，Godot 侧是 LF，
+# 各实现各跑一次 dump，再两两逐行 diff —— 只要实现分叉就会显形。
+# Windows 上 C++ 侧的 stdout 走文本模式会把 \n 翻译成 CRLF，Godot / Node / .NET 侧是 LF，
 # 所以 diff 要加 --strip-trailing-cr，否则每一行都会被判为不同。
+# Godot 的 stdout 顶部有两行版本横幅，比对前要先滤掉。
 diff --strip-trailing-cr \
      <(./build/test/nevext_test --dump) \
-     <(godot --headless --path gdscript --script res://test/test_main.gd -- --dump)
+     <(node nodejs/test/test_main.js --dump)
+
+diff --strip-trailing-cr \
+     <(./build/test/nevext_test --dump) \
+     <(godot --headless --path gdscript --script res://test/test_main.gd -- --dump | grep -v -e '^Godot Engine' -e '^$')
+
+diff --strip-trailing-cr \
+     <(./build/test/nevext_test --dump) \
+     <(csharp/bin/Release/net10.0/nevext_test.exe --dump)
 ```
 
 > 注意 Godot 的参数分隔：`--script` 之后再用一个单独的 `--`，其右侧才是脚本参数
@@ -259,16 +273,17 @@ diff --strip-trailing-cr \
 
 | 编号 | 现象 | 状态 | 处置 |
 | --- | --- | --- | --- |
-| **X1** | 引号串里写 `\`+换行（常见于「续行」写法）时，词法层把它当普通物理换行计入行号，但转义表里没有 `\<换行>`，语法层最终报 `InvalidEscape` 并只保留前缀 | 已确认为**规范缺口**（两套实现行为一致） | 由 C08 / F04 固化为当前行为：返回 `Err`、产物只剩前缀、`(1,InvalidEscape)`。若将来要把行续接纳入语法，需同时改 props 两侧实现与本表 |
+| **X1** | 引号串里写 `\`+换行（常见于「续行」写法）时，词法层把它当普通物理换行计入行号，但转义表里没有 `\<换行>`，语法层最终报 `InvalidEscape` 并只保留前缀 | 已确认为**规范缺口**（各套实现行为一致） | 由 C08 / F04 固化为当前行为：返回 `Err`、产物只剩前缀、`(1,InvalidEscape)`。若将来要把行续接纳入语法，需同时改各套实现与本表 |
 | **X2** | 非 BMP 字符的内部码元数不同（UTF-16 代理对 vs UTF-32） | 已确认为实现差异，不影响契约 | 通用语料只断言字符串内容相等（H02），不断言长度/码元数 |
 | **X3** | GDScript 的字符串模型导致长输入比 C++ 慢约三个数量级 | 已确认为实现差异 | 长输入（10k 裸串、2k 语句、全前缀扫描）只进各实现的私有套件，不进通用语料 |
 
 ## 7. 维护规则
 
 1. **新增用例先改本文档。** 先在 `docs/zh-cn/test-plan.md` 第 3 节加一行（含 ID、期望值、覆盖点），
-   再同步到 `cpp/test/test_conformance.cpp` 与 `gdscript/test/test_conformance.gd`。
+   再同步到 `cpp/test/test_conformance.cpp`、`gdscript/test/test_conformance.gd`、
+   `nodejs/test/test_conformance.js` 与 `csharp/test/TestConformance.cs`。
 2. **ID 不复用。** 用例改名可以，ID 一旦分配就固定，方便跨版本对照。
 3. **期望值来自参考实现，但必须人工复核。** 用 C++ 跑出结果后再逐条对着 `overview.md` 过一遍，
    不要把实现缺陷固化成期望值；判断为缺陷的走各自的私有计划处置。
-4. **分歧修正必须双侧落地。** 任何跨实现的分叉修正，都要在两侧同时补回归用例，
+4. **分歧修正必须各套落地。** 任何跨实现的分叉修正，都要在各实现同时补回归用例，
    并在本文档第 6 节或各自的私有计划里登记。
