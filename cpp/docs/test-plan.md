@@ -1,12 +1,12 @@
 # Nevext C++ 实现测试计划
 
-> 适用范围：`cpp/nevext/`（common.hpp / lexer.hpp / parser.hpp / nevext.hpp）
+> 适用范围：`cpp/nevext/nevext.hpp`（单文件，header-only）
 > 测试代码目录：`cpp/test/`
 > **跨实现通用语料不在本文档**：C++ 与 GDScript 共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
 > 落地在 `cpp/test/test_conformance.cpp`。本文档只描述 C++ 私有的 LEX / PAR / ERR 套件。
 > **格式化与开发约定不在本文档**：见 [development.md](./development.md)。
-> 文档最后更新：2026-10-30（新增 LEX-26 / PAR-18：`Lexer::Reset` 与 `Parser::Reset`
-> 对象复用；整个套件 111 用例 / 796 断言通过）
+> 文档最后更新：2026-11-01（`common.hpp` / `lexer.hpp` / `parser.hpp` 合并为单文件
+> `nevext.hpp`，用例数与断言数不变：111 用例 / 796 断言通过）
 
 ## 1. 目标与非目标
 
@@ -27,10 +27,14 @@
 
 | 文件 | 职责 | 主要测试面 |
 | --- | --- | --- |
-| `cpp/nevext/common.hpp` | `TokenType`、`Result` 枚举 | 枚举取值约定（`Success == 0`） |
-| `cpp/nevext/lexer.hpp` | 空白/注释跳过、裸串、引号串、分号、行号、错误收集 | 词法套件 `Lexer` |
-| `cpp/nevext/parser.hpp` | 语句切分、转义展开、错误记录、错误恢复开关 | 语法套件 `Parser` |
-| `cpp/nevext/nevext.hpp` | 统一入口（只 include parser） | 端到端用例间接覆盖 |
+| `cpp/nevext/nevext.hpp`「类型」节 | 同文件内 `TokenType`、`Result` 枚举，`Token` / `Statement` / `Program` 定义 | 枚举取值约定（`Success == 0`） |
+| `cpp/nevext/nevext.hpp`「词法」节 | 空白/注释跳过、裸串、引号串、分号、行号、错误收集 | 词法套件 `Lexer` |
+| `cpp/nevext/nevext.hpp`「语法」节 | 语句切分、转义展开、错误记录、错误恢复开关 | 语法套件 `Parser` |
+| `cpp/nevext/nevext.hpp` 整体 | 唯一的公开头，等价于旧的「汇总头」 | 端到端用例间接覆盖 |
+
+> 2026-11-01 之前这里是四个文件（`common.hpp` / `lexer.hpp` / `parser.hpp` / 汇总用的
+> `nevext.hpp`）。合并后三节仍在同一文件内按依赖顺序排列，上表按「节」而不是按「文件」划分，
+> 用例到节的对应关系保持不变。
 
 对外 API 面（测试用例只通过这层驱动，避免依赖私有成员函数）：
 
@@ -211,15 +215,15 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 | `Parser::ParseProgram` 的 `pauseWhenError` 两种取值 | 已覆盖 |
 | `Parser::parseStatement` 的全部 token 分支 | 已覆盖（`Unexpected` 分支由 ERR-01 覆盖） |
 | `Parser::escape` 成功路径与两种失败路径（串尾反斜杠、非法转义） | 部分覆盖：非法转义已覆盖，串尾落在反斜杠上的路径未覆盖（该状态被词法层提前拦截，见第 8 节备注） |
-| `common.hpp` 中 `UnknownError` / `UnclosedStringError` | 未覆盖：二者均为内部返回码，不会经 `ParseProgram` 向外暴露 |
+| 「类型」节中 `UnknownError` / `UnclosedStringError` | 未覆盖：二者均为内部返回码，不会经 `ParseProgram` 向外暴露 |
 
 ## 8. 缺陷处置记录
 
 | 编号 | 现象 | 状态 | 处置 |
 | --- | --- | --- | --- |
-| **D1** | 语法错误未反映到返回值：`ParseProgram` 顶层遇到 `Unexpected` token 时只写 `parser.errors`，未把 `result` 置为 `Error`（未闭合字符串会「返回成功但内容缺失」） | ✅ 已修复（2026-10-17） | `parser.hpp` 顶层 `else` 分支补 `result = Result::Error;`。ERR-01 / ERR-02 已改为断言 `Error` |
+| **D1** | 语法错误未反映到返回值：`ParseProgram` 顶层遇到 `Unexpected` token 时只写 `parser.errors`，未把 `result` 置为 `Error`（未闭合字符串会「返回成功但内容缺失」） | ✅ 已修复（2026-10-17） | 「语法」节 `ParseProgram` 顶层 `else` 分支补 `result = Result::Error;`。ERR-01 / ERR-02 已改为断言 `Error` |
 | **D2** | 未闭合的多行注释被静默吞掉，既不报错也不保留后续内容 | ✅ 已定为规范（2026-10-17） | 不是缺陷：`docs/zh-cn/overview.md` 已明文规定「未闭合的多行注释不是错误，一直延伸到输入结束」。ERR-03 改为断言这一规定；`guide-cpp.md` 的「非错误的情况」也做了说明 |
-| **D3** | 跨行引号串不推进行号，后续 token / 语句行号整体偏小 | ✅ 已修复（2026-10-17） | `lexer.hpp` 的 `scanQuotedStr` 对串内每个 `\n`（含被反斜杠转义的换行）累加 `line`。新增 LEX-24 / LEX-25 / PAR-17 / ERR-12 作为回归防线 |
+| **D3** | 跨行引号串不推进行号，后续 token / 语句行号整体偏小 | ✅ 已修复（2026-10-17） | 「词法」节的 `scanQuotedStr` 对串内每个 `\n`（含被反斜杠转义的换行）累加 `line`。新增 LEX-24 / LEX-25 / PAR-17 / ERR-12 作为回归防线 |
 | **D4** | 同一行内的多处错误只报第一条（`Parser::error` 按 `lastErrorLine` 去重） | ✅ 已修复 | 去重逻辑已移除，同行的多处错误全部记录。ERR-05 已改为断言两条消息 |
 | **B1**（非缺陷，契约） | `Token::value` 是 `std::u16string_view`，指向调用方传入的缓冲区 | — | 由 ERR-11 固化契约；`docs/zh-cn/guide-cpp.md` 的生命周期表已说明 |
 

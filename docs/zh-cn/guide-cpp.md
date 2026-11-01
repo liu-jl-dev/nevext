@@ -4,10 +4,11 @@
 [概述](./overview.md)。
 
 ## 集成步骤
-Nevext 的 C++ 实现是 **header-only** 的，没有 `.lib`、`.dll`，把头文件目录拷进工程即可使用。
+Nevext 的 C++ 实现是 **header-only** 的**单文件**，没有 `.lib`、`.dll`，也没有需要一起拷贝的
+兄弟头文件：把 `nevext.hpp` 拷进工程即可使用。
 
-1. 把 `cpp/nevext/` 整个目录复制到你的工程中；
-2. 在需要使用处 `#include "nevext/nevext.hpp"`；
+1. 把 `cpp/nevext/nevext.hpp` 复制到你的工程中（放哪个目录都行，它不 include 任何自己的文件）；
+2. 在需要使用处 `#include "nevext.hpp"`（或按你放置的相对路径调整）；
 3. 确认工程开启了 C++20（`set(CMAKE_CXX_STANDARD 20)` 或 `/std:c++20`）；
 
 ## 环境要求
@@ -28,11 +29,8 @@ cpp/
 ├── CMakeLists.txt        # 构建 demo01 与单元测试 nevext_test
 ├── build.cmd             # cmake -B build && cmake --build build
 ├── test.cmd              # 运行单元测试（ctest）
-├── nevext/               # ★ 库本体，只需拷贝这个目录
-│   ├── common.hpp        # 枚举定义
-│   ├── lexer.hpp         # 词法分析
-│   ├── parser.hpp        # 语法分析
-│   └── nevext.hpp        # 汇总头，include 这个即可
+├── nevext/               # ★ 库本体，只需拷贝这个文件
+│   └── nevext.hpp        # 全部实现：类型 → 词法（Lexer）→ 语法（Parser）
 ├── test/                 # 单元测试（零第三方依赖，不随库发布）
 │   ├── test_framework.hpp
 │   ├── test_util.hpp
@@ -58,12 +56,13 @@ endif()
 
 ## 快速上手
 
-下面是完整可运行的最小示例（取自 `demo/demo01.cpp`）：
+下面是完整可运行的最小示例（节选自 `demo/demo01.cpp`，其中 `#include` 路径按你自己的
+文件放置方式调整）：
 
 ```cpp
 #include <iostream>
 #include <windows.h>
-#include "nevext/nevext.hpp"
+#include "nevext.hpp"
 #include "utf.hpp"
 
 int main() {
@@ -152,7 +151,7 @@ cd build && ctest -C Debug --output-on-failure
 
 所有类型和函数都在 `namespace Nevext` 下。
 
-### 枚举（`common.hpp`）
+### 枚举（TokenType / Result）
 ```cpp
 enum TokenType {
   Unexpected,   // 词法错误产生的 token
@@ -172,7 +171,7 @@ enum Result {
 > **要点：** `Result::Success` 的值是 0，所以判断要用 `if (result)` 表示**出错**，
 > 用 `if (result != Nevext::Result::Success)` 更清晰，建议后者。
 
-### Token 与 Lexer（`lexer.hpp`）
+### Token 与 Lexer（词法节）
 ```cpp
 struct Token {
   int line;                       // 该 token 所在行号（从 1 开始）
@@ -192,7 +191,7 @@ struct Lexer {
 一般不需要直接使用 `Lexer`，交给 `Parser` 驱动即可。只有在需要自定义扫描逻辑，
 或要读取 `lexer.errors` 时才接触它。
 
-### Parser、Statement 与 Program（`parser.hpp`）
+### Parser、Statement 与 Program（语法节）
 
 ```cpp
 struct Statement {

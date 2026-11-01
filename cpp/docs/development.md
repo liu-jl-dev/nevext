@@ -70,11 +70,11 @@
 | `AccessModifierOffset` | `-1` | 沿用 Chromium |
 | `DerivePointerAlignment` | `false` | 不让工具按文件内容猜，避免同一份代码得出不同写法 |
 | `PointerAlignment` | `Left` | `char16_t* p`，贴在类型一侧 |
-| `SortIncludes` | `false` | header-only 库，include 顺序是按依赖手工排的（先底层再上层），不能被重排 |
+| `SortIncludes` | `false` | 保留手工分组（先系统头、后项目头）。库合并成单文件后，`nevext.hpp` 里的标准库头本就按字典序排列，这一项设为 `false` 只是不再冒「被自动重排」的风险 |
 | `IncludeBlocks` | `Preserve` | 保留手工分组的空行 |
 | `Standard` | `c++20` | 见下一节 |
 
-一句话概括这套配置的来历：**它是照着 `cpp/nevext/*.hpp` 现有风格反过来提炼的，
+一句话概括这套配置的来历：**它是照着 `cpp/nevext/nevext.hpp` 现有风格反过来提炼的，
 不是拿某个现成风格去套。** 判据就是按它格式化核心库得到 0 行差异。
 
 ### 1.4 版本坑：`Standard` 的取值写法
@@ -134,7 +134,7 @@ cd cpp && cmake -B build && cmake --build build && ctest -C Debug --output-on-fa
 
 | 路径 | 职责 | 是否随库发布 |
 | --- | --- | --- |
-| `cpp/nevext/` | 库本体，header-only（`common` / `lexer` / `parser` / `nevext`） | 是，只需拷这个目录 |
+| `cpp/nevext/` | 库本体，header-only，只有 `nevext.hpp` 一个文件 | 是，只需拷这个文件 |
 | `cpp/test/` | 私有测试套件，零第三方依赖 | 否 |
 | `cpp/demo/` | 可运行示例，含 UTF-8 / UTF-16 转换小工具 | 否 |
 | `cpp/docs/` | 给维护者看的文档（本文档 + 测试计划） | 否 |

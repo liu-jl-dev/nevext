@@ -60,10 +60,10 @@ playerName '海上生明月'
 
 ### C++
 
-header-only，没有 `.lib` / `.dll`，把目录拷进工程即可：
+header-only 的单文件，没有 `.lib` / `.dll`，也没有兄弟头文件：拷 `nevext.hpp` 进工程即可：
 
 ```cpp
-#include "nevext/nevext.hpp"
+#include "nevext.hpp"
 
   // main 函数中
   std::u16string src = u"windowSize 1280, 720;";
