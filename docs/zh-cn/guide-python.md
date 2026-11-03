@@ -31,6 +31,8 @@ for stmt in res.val:
 
 ## API 参考
 
+版本常量 `nevext.__version__` 与 [更新日志](../../CHANGELOG.md)、git tag 同步更新。
+
 ### 枚举与产物类型
 
 ```python

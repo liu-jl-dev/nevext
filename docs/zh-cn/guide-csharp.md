@@ -36,6 +36,8 @@ foreach (var stmt in res.Val)
 
 ## API 参考
 
+版本常量 `Nevext.Info.Version`（`public const string`）与 [更新日志](../../CHANGELOG.md)、git tag 同步更新。
+
 ### 枚举与产物类型
 
 ```csharp

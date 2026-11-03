@@ -176,3 +176,6 @@ cd cpp && cmake -B build && cmake --build build && ctest -C Debug --output-on-fa
    排版换行（开着保存时格式化时最容易带进来，值得看一眼）。
 5. **文档同步**：改了行为要连带更新 `docs/zh-cn/` 下的相关文档；新增了文件要更新
    README 的目录/索引，避免留下悬空引用。
+6. **版本号一致**（发版或改过任一版本落点时必做）：`python tools/check_version.py`，
+   九个落点应全部相等；带期望值运行（`python tools/check_version.py 0.2.0`）
+   可在打 tag 前预检。

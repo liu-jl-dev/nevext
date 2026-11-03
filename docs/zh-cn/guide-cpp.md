@@ -151,6 +151,8 @@ cd build && ctest -C Debug --output-on-failure
 
 所有类型和函数都在 `namespace Nevext` 下。
 
+版本常量 `Nevext::kVersion`（`std::string_view`）与 [更新日志](../../CHANGELOG.md)、git tag 同步更新，各落点的一致性由 `tools/check_version.py` 守护。
+
 ### 枚举（TokenType / Result）
 ```cpp
 enum TokenType {

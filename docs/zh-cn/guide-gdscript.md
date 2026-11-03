@@ -114,6 +114,8 @@ statement 2 at line 7:
 
 所有类型都是 `Nevext` 类的内部类，通过 `Nevext.XXX` 访问。
 
+版本常量 `Nevext.VERSION` 与 [更新日志](../../CHANGELOG.md)、git tag 同步更新。
+
 ### 枚举
 
 ```gdscript

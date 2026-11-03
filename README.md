@@ -8,8 +8,12 @@ Nevext 只规定**如何把代码字符串解析成列表**，不规定这些列
 
 “Nevext” 意为 “never extends”，**永远不增加新的语法**。
 
-容易手写实现是 Nevext 的设计目标之一：手写实现容易，用 LLM 生成实现也就容易，
+容易手写实现是 Nevext 的设计目标之一。手写实现容易，用 LLM 生成实现也就容易，
 从而方便移植到各种平台。
+
+如果您在使用文档中产生疑惑，可以提出。这有助于改进文档。
+
+如果您希望将 Stope 移植到任意宿主语言，可以提出 issue。由于 Stope 会保持足够简单，移植会很容易，使用 Agent 进行移植是足够可靠的。
 
 ## 语法简述
 
@@ -182,6 +186,19 @@ python python/demo/demo01.py      # Python
 
 不带参数时解析内置示例；传入文件路径则解析该文件（UTF-8）。
 退出码：`0` 解析成功，`1` 有词法 / 语法错误（分别打印两个错误容器），`2` 文件打不开。
+
+## 版本
+
+当前版本 **0.1.0**，遵循[语义化版本](https://semver.org/lang/zh-CN/)：
+1.0.0 之前语法规范与各实现的公开 API 仍可能调整（升次版本号），破坏性变更
+会在[更新日志](./CHANGELOG.md)标注；1.0.0 起承诺 1.x 内行为与 API 兼容。
+
+- 整个仓库共用一个版本号，正式版本用 annotated tag 锚定（`v` 前缀）；
+- 版本常量内嵌在各实现里，拷走后可自报家门：C++ `Nevext::kVersion`、
+  JavaScript `VERSION`、Python `__version__`、C# `Nevext.Info.Version`、
+  GDScript `Nevext.VERSION`；
+- 版本号共有九个落点（四套源码 + CMake / package.json / csproj / CHANGELOG），
+  一致性由零依赖脚本守护：`python tools/check_version.py`。
 
 ## 测试
 

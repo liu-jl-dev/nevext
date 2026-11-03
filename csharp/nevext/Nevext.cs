@@ -28,6 +28,13 @@ using System.Collections.Generic;
 
 namespace Nevext
 {
+    /// <summary>库的版本信息。</summary>
+    public static class Info
+    {
+        /// <summary>库版本。与 CHANGELOG.md、git tag（v 前缀）同步更新；落点一致性见 tools/check_version.py。</summary>
+        public const string Version = "0.1.0";
+    }
+
     /// <summary>词法单元类型。取值与 C++ 的 TokenType 枚举逐项对应（0 起）。</summary>
     public enum TokenType
     {
