@@ -24,10 +24,12 @@ VERSION_SPOTS = [
     ("nodejs/package.json", r'"version": "([^"]+)"'),
     ("nodejs/nevext/nevext.js", r"^export const VERSION = '([^']+)'"),
     ("python/nevext/nevext.py", r'^__version__ = "([^"]+)"'),
+    ("lua/nevext/nevext.lua", r'^\s*VERSION = "([^"]+)",'),
     ("csharp/nevext.csproj", r"<Version>([^<]+)</Version>"),
     ("csharp/nevext/Nevext.cs", r'Version = "([^"]+)"'),
     ("gdscript/nevext/nevext.gd", r'^const VERSION := "([^"]+)"'),
-    ("CHANGELOG.md", r"^## \[([^\]]+)\]"),
+    # 只匹配正式版本小节（x.y.z）；「未发布」小节不参与一致性比较
+    ("CHANGELOG.md", r"^## \[(\d+\.\d+\.\d+)\]"),
 ]
 
 

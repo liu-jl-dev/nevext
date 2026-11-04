@@ -51,14 +51,16 @@ playerName '海上生明月'
 | JavaScript | **可用** | Node.js，零依赖单文件（ESM）。行为与 C++ 逐条对齐，游标式扫描整体 O(n) |
 | C# | **可用** | .NET，零依赖单文件（`namespace Nevext`）。行为与 C++ 逐条对齐，游标式扫描整体 O(n) |
 | Python | **可用** | CPython 3.10+，零依赖单文件。行为与 C++ 逐条对齐，游标式扫描整体 O(n) |
+| Lua | **可用** | Lua 5.4+，零依赖单文件。行为与 C++ 逐条对齐（字节序列扫描，结构字符全在 ASCII 区间），游标式扫描整体 O(n) |
 
-五套实现跑同一份跨实现语料（55 条），定义见
+六套实现跑同一份跨实现语料（55 条），定义见
 [跨实现通用测试计划](./docs/zh-cn/test-plan.md)；各实现另有私有套件，
 见 [C++ 测试计划](./cpp/docs/test-plan.md)、
 [GDScript 测试计划](./gdscript/docs/test-plan.md)、
 [JavaScript 测试计划](./nodejs/docs/test-plan.md)、
-[C# 测试计划](./csharp/docs/test-plan.md) 与
-[Python 测试计划](./python/docs/test-plan.md)。
+[C# 测试计划](./csharp/docs/test-plan.md)、
+[Python 测试计划](./python/docs/test-plan.md) 与
+[Lua 测试计划](./lua/docs/test-plan.md)。
 
 ## 快速开始
 
@@ -171,9 +173,36 @@ if res.err == nevext.Result.Error:
 - 采用「完整字符串 + 游标」扫描，整体 O(n)；
 - 更多细节见 [Python 使用指南](./docs/zh-cn/guide-python.md)。
 
+### Lua
+
+零依赖单文件，把 `lua/nevext/nevext.lua` 拷进工程即可：
+
+```lua
+local Nevext = require("nevext")
+
+local lexer = Nevext.Lexer.new("windowSize 1280, 720;")
+local parser = Nevext.Parser.new(lexer)
+local res = parser:parse_program()
+if res.err == Nevext.Result.Error then
+  print(table.concat(parser.errors, "\n"))
+end
+-- res.val -> [{line=1, strings={"windowSize", "1280", "720"}}]
+```
+
+要点：
+
+- 需要 **Lua 5.4+**，零第三方依赖，无需安装；
+- Lua 字符串是字节序列：本语法的结构字符全在 ASCII 区间，按字节扫描行为
+  与按码元扫描完全等价，中文与 emoji 原样保留（元素计数按字节，缺口 LU1）；
+- 命名按 Lua 惯例 snake_case，方法用冒号调用（`lexer:next_token()`），
+  构造器统一 `Xxx.new(...)`；语句列表走 `parse_program()` 的返回值
+  （`{ err, val }`），不像 C++ 用出参；
+- 采用「完整字符串 + 游标」扫描，整体 O(n)；
+- 更多细节见 [Lua 使用指南](./docs/zh-cn/guide-lua.md)。
+
 ## 示例程序
 
-五套实现各有一份可运行的 `demo01`，使用**同一段输入与同一输出格式**，输出可逐字节比对
+六套实现各有一份可运行的 `demo01`，使用**同一段输入与同一输出格式**，输出可逐字节比对
 （见[跨实现通用测试计划](./docs/zh-cn/test-plan.md) 第 5.1 节的「demo 门禁」）：
 
 ```bash
@@ -182,6 +211,7 @@ gdscript\demo.cmd                 # GDScript
 node nodejs/demo/demo01.js        # JavaScript
 csharp\demo.cmd                   # C#
 python python/demo/demo01.py      # Python
+lua lua/demo/demo01.lua           # Lua
 ```
 
 不带参数时解析内置示例；传入文件路径则解析该文件（UTF-8）。
@@ -196,8 +226,8 @@ python python/demo/demo01.py      # Python
 - 整个仓库共用一个版本号，正式版本用 annotated tag 锚定（`v` 前缀）；
 - 版本常量内嵌在各实现里，拷走后可自报家门：C++ `Nevext::kVersion`、
   JavaScript `VERSION`、Python `__version__`、C# `Nevext.Info.Version`、
-  GDScript `Nevext.VERSION`；
-- 版本号共有九个落点（四套源码 + CMake / package.json / csproj / CHANGELOG），
+  GDScript `Nevext.VERSION`、Lua `Nevext.VERSION`；
+- 版本号共有十个落点（六套源码 + CMake / package.json / csproj / CHANGELOG），
   一致性由零依赖脚本守护：`python tools/check_version.py`。
 
 ## 测试
@@ -217,6 +247,9 @@ csharp\test.cmd
 
 # Python
 python python/test/test_main.py
+
+# Lua（5.4+）
+lua lua/test/test_main.lua
 ```
 
 各套件都支持 `--dump`，按同一行格式打印语料的实际结果，两两 diff 即可显形实现之间的分歧：
@@ -237,6 +270,10 @@ diff --strip-trailing-cr \
 diff --strip-trailing-cr \
      <(./cpp/build/test/nevext_test --dump) \
      <(python python/test/test_main.py --dump)
+
+diff --strip-trailing-cr \
+     <(./cpp/build/test/nevext_test --dump) \
+     <(lua lua/test/test_main.lua --dump)
 ```
 
 ## 文档
@@ -247,13 +284,15 @@ diff --strip-trailing-cr \
 - [JavaScript 使用指南](./docs/zh-cn/guide-nodejs.md) —— 集成、API、已知限制
 - [C# 使用指南](./docs/zh-cn/guide-csharp.md) —— 集成、API、已知限制
 - [Python 使用指南](./docs/zh-cn/guide-python.md) —— 集成、API、已知限制
-- [跨实现通用测试计划](./docs/zh-cn/test-plan.md) —— 五套实现共用的语料与断言约定
+- [Lua 使用指南](./docs/zh-cn/guide-lua.md) —— 集成、API、已知限制
+- [跨实现通用测试计划](./docs/zh-cn/test-plan.md) —— 六套实现共用的语料与断言约定
 - [C++ 开发说明](./cpp/docs/development.md) —— 代码格式化配置、目录职责、代码约定、提交前检查清单
 - [C++ 测试计划](./cpp/docs/test-plan.md) —— C++ 私有套件（LEX / PAR / ERR）
 - [GDScript 测试计划](./gdscript/docs/test-plan.md) —— GDScript 私有套件与 Godot 踩坑清单
 - [JavaScript 测试计划](./nodejs/docs/test-plan.md) —— JS 私有套件与实现要点
 - [C# 测试计划](./csharp/docs/test-plan.md) —— C# 私有套件与实现要点
 - [Python 测试计划](./python/docs/test-plan.md) —— Python 私有套件与实现要点
+- [Lua 测试计划](./lua/docs/test-plan.md) —— Lua 私有套件与实现要点
 
 ## 开源协议
 

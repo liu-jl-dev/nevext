@@ -2,7 +2,7 @@
 
 > 适用范围：`python/nevext/nevext.py`（Python 3.10+，单文件，零第三方依赖）
 > 测试代码目录：`python/test/`
-> **跨实现通用语料不在本文档**：五套实现共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
+> **跨实现通用语料不在本文档**：六套实现共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
 > 落地在 `python/test/test_conformance.py`。本文档只描述 Python 私有的 `Impl` 套件。
 > 文档最后更新：2026-10-30（初版，60 用例 / 449 断言通过）
 
