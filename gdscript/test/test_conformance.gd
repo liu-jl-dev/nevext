@@ -132,7 +132,7 @@ func check_case(ctx: Dictionary, c: Dictionary) -> void:
 	var src: String = c["src"]
 	var lexer := Nevext.Lexer.new(src)
 	var parser := Nevext.Parser.new(lexer)
-	var res = parser.parse_prog(bool(c["pause"]))
+	var res = parser.parse_program(bool(c["pause"]))
 
 	# 1) 返回值
 	Framework.check_eq(ctx, "Success" if bool(c["ok"]) else "Error",
@@ -171,7 +171,7 @@ static func dump() -> void:
 	for c in cases():
 		var lexer := Nevext.Lexer.new(c["src"] as String)
 		var parser := Nevext.Parser.new(lexer)
-		var res = parser.parse_prog(bool(c["pause"]))
+		var res = parser.parse_program(bool(c["pause"]))
 
 		var prog_parts: Array[String] = []
 		for stmt in res.val:

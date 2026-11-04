@@ -49,7 +49,7 @@ func _initialize() -> void:
 
 	var lexer := Nevext.Lexer.new(input)
 	var parser := Nevext.Parser.new(lexer)
-	var res: Nevext.ParseResult = parser.parse_prog()
+	var res: Nevext.ParseResult = parser.parse_program()
 
 	if res.err:
 		# 词法错误与语法错误分开打印，与 C++ 版的两个错误容器一致。

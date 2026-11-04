@@ -46,7 +46,7 @@ Nevext 有八套独立实现。各处的算法各自演化，很容易在以下�
 | token 字段 | `{line, type, value}` | `{line, type, literal}` |
 | 词法错误容器 | `lexer.errors` | `lexer.errors` |
 | 语法器构造 | `Parser parser(lexer)` | `Nevext.Parser.new(lexer)` |
-| 解析入口 | `parser.ParseProgram(prog, pauseWhenError)` | `parser.parse_prog(pause_when_error)` |
+| 解析入口 | `parser.ParseProgram(prog, pauseWhenError)` | `parser.parse_program(pause_when_error)` |
 | 产物 | `Statement{line, strings}` 数组 | `Statement{line, strings}` 数组 |
 | 语法错误容器 | `parser.errors` | `parser.errors` |
 

@@ -11,6 +11,14 @@
 绑定成一个行为整体，规范与实现必须同步演进，按实现各自定版本没有意义。
 每个正式版本用 annotated git tag（`v` 前缀）锚定。
 
+## [未发布]
+
+### 破坏性变更
+
+- **GDScript：`Parser.parse_prog` 更名为 `parse_program`**（与 Python / Lua /
+  Rust 的 `parse_program` 及 C++ / C# / Go 的 `ParseProgram` 统一）。
+  迁移：调用点把 `parse_prog(` 改为 `parse_program(` 即可，签名与返回值不变。
+
 ## [0.2.0] - 2026-11-04
 
 新增三套实现，测试从六套扩到八套；语法与既有 API 无任何变更，

@@ -177,7 +177,7 @@ class Parser:
 	func reset(lexer_:Lexer):
 		lexer = lexer_
 		errors = []
-	func parse_prog(pause_when_error:bool=true) -> ParseResult:
+	func parse_program(pause_when_error:bool=true) -> ParseResult:
 		var res := ParseResult.new(); res.val = []
 		_failed = false
 		while true:

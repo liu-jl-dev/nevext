@@ -82,7 +82,7 @@ func _initialize() -> void:
 	'
 	var lexer := Nevext.Lexer.new(src)
 	var parser := Nevext.Parser.new(lexer)
-	var res:Nevext.ParseResult = parser.parse_prog()
+	var res:Nevext.ParseResult = parser.parse_program()
 	if res.err:
 		print("==== Parser errors: ================================")
 		for e in parser.errors:
@@ -179,10 +179,10 @@ class Parser:
 
 	func _init(lexer_:Lexer=null) -> void
 	func reset(lexer_:Lexer)
-	func parse_prog(pause_when_error:bool=true) -> ParseResult
+	func parse_program(pause_when_error:bool=true) -> ParseResult
 ```
 
-**`parse_prog` 参数**
+**`parse_program` 参数**
 
 | 参数 | 说明 |
 | --- | --- |

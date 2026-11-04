@@ -26,7 +26,7 @@ func EscapeFuncCanBeReplaced(ctx: Dictionary) -> void:
 	var lexer := Nevext.Lexer.new("\"a\\nb\" x")
 	lexer.escape_func = Nevext.null_escape
 	var parser := Nevext.Parser.new(lexer)
-	var res = parser.parse_prog(true)
+	var res = parser.parse_program(true)
 	Framework.check_eq(ctx, "Success", "Success" if res.err == 0 else "Error", "返回值", "实际返回值")
 	var prog: Array = res.val
 	Framework.check_eq(ctx, 1, prog.size(), "语句数", "实际语句数")
@@ -39,12 +39,12 @@ func EscapeFuncCanBeReplaced(ctx: Dictionary) -> void:
 func LexerAndParserResetAreReusable(ctx: Dictionary) -> void:
 	var lexer := Nevext.Lexer.new("a b")
 	var parser := Nevext.Parser.new(lexer)
-	var first = parser.parse_prog(true)
+	var first = parser.parse_program(true)
 	Framework.check_eq(ctx, 1, (first.val as Array).size(), "第一次语句数", "实际语句数")
 
 	lexer.reset("c; d")
 	parser.reset(lexer)
-	var second = parser.parse_prog(true)
+	var second = parser.parse_program(true)
 	var prog: Array = second.val
 	Framework.check_eq(ctx, 2, prog.size(), "第二次语句数", "实际语句数")
 	if prog.size() >= 2:
@@ -71,7 +71,7 @@ func LongRawTokenIsComplete(ctx: Dictionary) -> void:
 	var src := "x".repeat(1000) + ";"
 	var lexer := Nevext.Lexer.new(src)
 	var parser := Nevext.Parser.new(lexer)
-	var res = parser.parse_prog(true)
+	var res = parser.parse_program(true)
 	Framework.check_eq(ctx, "Success", "Success" if res.err == 0 else "Error", "返回值", "实际返回值")
 	var prog: Array = res.val
 	if prog.size() >= 1:
@@ -87,7 +87,7 @@ func ManyStatementsAreAllParsed(ctx: Dictionary) -> void:
 	var src := "\n".join(lines)
 	var lexer := Nevext.Lexer.new(src)
 	var parser := Nevext.Parser.new(lexer)
-	var res = parser.parse_prog(true)
+	var res = parser.parse_program(true)
 	Framework.check_eq(ctx, "Success", "Success" if res.err == 0 else "Error", "返回值", "实际返回值")
 	var prog: Array = res.val
 	Framework.check_eq(ctx, 500, prog.size(), "语句数", "实际语句数")

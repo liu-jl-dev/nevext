@@ -99,7 +99,7 @@ header-only 的单文件，没有 `.lib` / `.dll`，也没有兄弟头文件：�
 ```gdscript
 var lexer  := Nevext.Lexer.new(src)
 var parser := Nevext.Parser.new(lexer)
-var res:Nevext.ParseResult = parser.parse_prog()
+var res:Nevext.ParseResult = parser.parse_program()
 ```
 
 要点：
@@ -352,6 +352,7 @@ diff --strip-trailing-cr \
 ## 文档
 
 - [语法概述](./docs/zh-cn/overview.md) —— 语法规则、转义字符、边界细节
+- [API Reference](./docs/zh-cn/api-reference.md) —— 八份实现的接口形状对照与差异登记
 - [C++ 使用指南](./docs/zh-cn/guide-cpp.md) —— 集成、API、错误处理
 - [GDScript 使用指南](./docs/zh-cn/guide-gdscript.md) —— 集成、API、已知缺口
 - [JavaScript 使用指南](./docs/zh-cn/guide-nodejs.md) —— 集成、API、已知限制
