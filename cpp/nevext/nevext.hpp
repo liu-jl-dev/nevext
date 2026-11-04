@@ -44,7 +44,7 @@ namespace Nevext {
 
 // 库版本。与根目录 CHANGELOG.md、git tag（v 前缀）同步更新；全部落点的
 // 一致性由 tools/check_version.py 守护。
-inline constexpr std::string_view kVersion = "0.2.0";
+inline constexpr std::string_view kVersion = "0.3.0";
 
 // ---------------------------------------------------------------------------
 // 类型

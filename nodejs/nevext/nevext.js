@@ -25,7 +25,7 @@
 // ---------------------------------------------------------------------------
 
 /** 库版本。与 CHANGELOG.md、git tag（v 前缀）同步更新；落点一致性见 tools/check_version.py。 */
-export const VERSION = '0.2.0';
+export const VERSION = '0.3.0';
 
 /** 词法单元类型。取值与 C++ 的 TokenType 枚举逐项对应（Success 式的 0 起）。 */
 const TokenType = Object.freeze({

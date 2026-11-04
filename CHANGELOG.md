@@ -11,13 +11,21 @@
 绑定成一个行为整体，规范与实现必须同步演进，按实现各自定版本没有意义。
 每个正式版本用 annotated git tag（`v` 前缀）锚定。
 
-## [未发布]
+## [0.3.0] - 2026-11-04
+
+本版包含一次破坏性变更（GDScript 方法更名），按本仓库的版本策略在 1.0.0
+之前以次版本号发布并在此标注。语法规范与其余七套实现的 API 无变更。
 
 ### 破坏性变更
 
 - **GDScript：`Parser.parse_prog` 更名为 `parse_program`**（与 Python / Lua /
   Rust 的 `parse_program` 及 C++ / C# / Go 的 `ParseProgram` 统一）。
   迁移：调用点把 `parse_prog(` 改为 `parse_program(` 即可，签名与返回值不变。
+
+### 新增
+
+- **[API Reference](./docs/zh-cn/api-reference.md)**：八份实现的接口形状
+  对照与差异登记（D-1 ~ D-8），定位「有什么、叫什么、哪里不同」。
 
 ## [0.2.0] - 2026-11-04
 
@@ -65,5 +73,6 @@
   `__version__` / `Nevext.Info.Version` / `Nevext.VERSION`），落点一致性由
   `tools/check_version.py` 守护。
 
+[0.3.0]: https://github.com/liu-jl-dev/nevext/releases/tag/v0.3.0
 [0.2.0]: https://github.com/liu-jl-dev/nevext/releases/tag/v0.2.0
 [0.1.0]: https://github.com/liu-jl-dev/nevext/releases/tag/v0.1.0

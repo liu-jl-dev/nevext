@@ -32,7 +32,7 @@
 // ----------------------------------------------------------------------------
 
 // 库版本。与 CHANGELOG.md、git tag（v 前缀）同步更新；落点一致性见 tools/check_version.py。
-pub const VERSION: &str = "0.2.0";
+pub const VERSION: &str = "0.3.0";
 
 // 错误消息常量，与 C++ 的消息表逐字一致（含句号后的空格）
 pub const UNCLOSED_MESSAGE: &str = "unclosed string literal. ";
