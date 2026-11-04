@@ -1,7 +1,7 @@
 class_name Nevext # 默认继承 RefCounted
 
 # 库版本。与 CHANGELOG.md、git tag（v 前缀）同步更新；落点一致性见 tools/check_version.py。
-const VERSION := "0.1.0"
+const VERSION := "0.2.0"
 
 # 行为基准：cpp/nevext 下的 C++ 实现。
 enum TokenType {

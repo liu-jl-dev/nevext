@@ -276,7 +276,7 @@ rust\demo.cmd                     # Rust
 
 ## 版本
 
-当前版本 **0.1.0**，遵循[语义化版本](https://semver.org/lang/zh-CN/)：
+当前版本 **0.2.0**，遵循[语义化版本](https://semver.org/lang/zh-CN/)：
 1.0.0 之前语法规范与各实现的公开 API 仍可能调整（升次版本号），破坏性变更
 会在[更新日志](./CHANGELOG.md)标注；1.0.0 起承诺 1.x 内行为与 API 兼容。
 
@@ -285,7 +285,7 @@ rust\demo.cmd                     # Rust
   JavaScript `VERSION`、Python `__version__`、C# `Nevext.Info.Version`、
   GDScript `Nevext.VERSION`、Lua `Nevext.VERSION`、Go `nevext.Version`、
   Rust `nevext::VERSION`；
-- 版本号共有十二个落点（八套源码 + CMake / package.json / csproj /
+- 版本号共有十三个落点（八套源码 + CMake / package.json / csproj /
   Cargo.toml / CHANGELOG），
   一致性由零依赖脚本守护：`python tools/check_version.py`。
 

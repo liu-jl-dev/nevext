@@ -11,7 +11,10 @@
 绑定成一个行为整体，规范与实现必须同步演进，按实现各自定版本没有意义。
 每个正式版本用 annotated git tag（`v` 前缀）锚定。
 
-## [未发布]
+## [0.2.0] - 2026-11-04
+
+新增三套实现，测试从六套扩到八套；语法与既有 API 无任何变更，
+八套实现行为经通用语料与 dump / demo 双门禁逐字节对拍。
 
 ### 新增
 
@@ -24,7 +27,7 @@
 - **第八套实现：Rust**（`rust/nevext/nevext.rs`，Rust 1.70+，单文件，零依赖），
   行为逐条对齐 C++ 参考实现；Rust 按字节扫描（合法 UTF-8 输入），详见
   [Rust 使用指南](./docs/zh-cn/guide-rust.md) 与 [Rust 测试计划](./rust/docs/test-plan.md)。
-- dump / demo 双门禁升级到八实现口径；版本落点增至十二处，
+- dump / demo 双门禁升级到八实现口径；版本落点增至十三处，
   `tools/check_version.py` 同步扩展。
 
 ## [0.1.0] - 2026-11-03
@@ -54,4 +57,5 @@
   `__version__` / `Nevext.Info.Version` / `Nevext.VERSION`），落点一致性由
   `tools/check_version.py` 守护。
 
+[0.2.0]: https://github.com/liu-jl-dev/nevext/releases/tag/v0.2.0
 [0.1.0]: https://github.com/liu-jl-dev/nevext/releases/tag/v0.1.0
