@@ -1,0 +1,19 @@
+[package]
+name = "nevext"
+version = "0.1.0"
+edition = "2021"
+description = "Nevext 语法解析库（Rust 实现，行为基准为 C++ 参考实现）"
+license = "MIT"
+
+# 库本体保持单文件「拷走即用」：nevext/nevext.rs 不依赖任何 crate，
+# 拷进其它工程时只需在 Cargo.toml 里指一下 [lib] path（或复制为 src/lib.rs）。
+[lib]
+path = "nevext/nevext.rs"
+
+[[bin]]
+name = "nevext_test"
+path = "test/test_main.rs"
+
+[[bin]]
+name = "demo01"
+path = "demo/demo01.rs"

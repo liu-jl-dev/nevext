@@ -18,6 +18,14 @@
 - **第六套实现：Lua**（`lua/nevext/nevext.lua`，Lua 5.4+，单文件，零依赖），
   行为逐条对齐 C++ 参考实现；Lua 按字节扫描，详见
   [Lua 使用指南](./docs/zh-cn/guide-lua.md) 与 [Lua 测试计划](./lua/docs/test-plan.md)。
+- **第七套实现：Go**（`go/nevext/nevext.go`，Go 1.21+，单文件，零依赖），
+  行为逐条对齐 C++ 参考实现；Go 按字节扫描，详见
+  [Go 使用指南](./docs/zh-cn/guide-go.md) 与 [Go 测试计划](./go/docs/test-plan.md)。
+- **第八套实现：Rust**（`rust/nevext/nevext.rs`，Rust 1.70+，单文件，零依赖），
+  行为逐条对齐 C++ 参考实现；Rust 按字节扫描（合法 UTF-8 输入），详见
+  [Rust 使用指南](./docs/zh-cn/guide-rust.md) 与 [Rust 测试计划](./rust/docs/test-plan.md)。
+- dump / demo 双门禁升级到八实现口径；版本落点增至十二处，
+  `tools/check_version.py` 同步扩展。
 
 ## [0.1.0] - 2026-11-03
 

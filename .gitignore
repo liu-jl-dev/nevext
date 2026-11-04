@@ -10,3 +10,5 @@ __pycache__/
 cpp/build/
 gdscript/.godot/
 
+rust/target/
+go/.smoke/

@@ -28,6 +28,9 @@ VERSION_SPOTS = [
     ("csharp/nevext.csproj", r"<Version>([^<]+)</Version>"),
     ("csharp/nevext/Nevext.cs", r'Version = "([^"]+)"'),
     ("gdscript/nevext/nevext.gd", r'^const VERSION := "([^"]+)"'),
+    ("go/nevext/nevext.go", r'^const Version = "([^"]+)"'),
+    ("rust/Cargo.toml", r'^version = "([^"]+)"'),
+    ("rust/nevext/nevext.rs", r'^pub const VERSION: &str = "([^"]+)"'),
     # 只匹配正式版本小节（x.y.z）；「未发布」小节不参与一致性比较
     ("CHANGELOG.md", r"^## \[(\d+\.\d+\.\d+)\]"),
 ]

@@ -52,15 +52,19 @@ playerName '海上生明月'
 | C# | **可用** | .NET，零依赖单文件（`namespace Nevext`）。行为与 C++ 逐条对齐，游标式扫描整体 O(n) |
 | Python | **可用** | CPython 3.10+，零依赖单文件。行为与 C++ 逐条对齐，游标式扫描整体 O(n) |
 | Lua | **可用** | Lua 5.4+，零依赖单文件。行为与 C++ 逐条对齐（字节序列扫描，结构字符全在 ASCII 区间），游标式扫描整体 O(n) |
+| Go | **可用** | Go 1.21+，零依赖单文件。行为与 C++ 逐条对齐（字节序列扫描，同 Lua 论证），游标式扫描整体 O(n) |
+| Rust | **可用** | Rust 1.70+，零依赖单文件（`Status` 枚举、`Parser` 不绑定词法器）。行为与 C++ 逐条对齐，游标式扫描整体 O(n) |
 
-六套实现跑同一份跨实现语料（55 条），定义见
+八套实现跑同一份跨实现语料（55 条），定义见
 [跨实现通用测试计划](./docs/zh-cn/test-plan.md)；各实现另有私有套件，
 见 [C++ 测试计划](./cpp/docs/test-plan.md)、
 [GDScript 测试计划](./gdscript/docs/test-plan.md)、
 [JavaScript 测试计划](./nodejs/docs/test-plan.md)、
 [C# 测试计划](./csharp/docs/test-plan.md)、
-[Python 测试计划](./python/docs/test-plan.md) 与
-[Lua 测试计划](./lua/docs/test-plan.md)。
+[Python 测试计划](./python/docs/test-plan.md)、
+[Lua 测试计划](./lua/docs/test-plan.md)、
+[Go 测试计划](./go/docs/test-plan.md) 与
+[Rust 测试计划](./rust/docs/test-plan.md)。
 
 ## 快速开始
 
@@ -200,9 +204,60 @@ end
 - 采用「完整字符串 + 游标」扫描，整体 O(n)；
 - 更多细节见 [Lua 使用指南](./docs/zh-cn/guide-lua.md)。
 
+### Go
+
+零依赖单文件，把 `go/nevext/nevext.go` 拷进工程即可（`go.mod` 只为仓库内
+测试入口存在，拷走时不需要）：
+
+```go
+lexer := nevext.NewLexer("windowSize 1280, 720;")
+parser := nevext.NewParser(lexer)
+res := parser.ParseProgram(true)
+if res.Err != nevext.Success {
+  for _, e := range parser.Errors {
+    fmt.Println(e)
+  }
+}
+// res.Val -> [{1 [windowSize 1280 720]}]
+```
+
+要点：
+
+- 需要 **Go 1.21+**，零第三方依赖，无需安装；
+- Go 字符串是 UTF-8 字节序列，与 Lua 同款论证：结构字符全在 ASCII 区间，
+  按字节扫描行为与按码元扫描完全等价（元素计数按字节，缺口 GO1）；
+- 命名按 Go 惯例 PascalCase 导出，错误容器是公开字段（`parser.Errors`）；
+- 语句列表走 `ParseProgram` 返回值 `res.Val`；
+- 更多细节见 [Go 使用指南](./docs/zh-cn/guide-go.md)。
+
+### Rust
+
+零依赖单文件，把 `rust/nevext/nevext.rs` 拷进工程并在 `Cargo.toml` 里
+`[lib] path = "nevext/nevext.rs"`（或复制为 `src/lib.rs`）：
+
+```rust
+let mut lexer = Lexer::new("windowSize 1280, 720;");
+let mut parser = Parser::new();
+let res = parser.parse_program(&mut lexer, true);
+if res.err == Status::Error {
+  for e in &parser.errors { println!("{}", e); }
+}
+// res.val -> [Statement { line: 1, strings: ["windowSize", "1280", "720"] }]
+```
+
+要点：
+
+- 需要 **Rust 1.70+**（edition 2021），零第三方依赖，无需安装；
+- Rust 字符串是 UTF-8 字节序列，与 Lua / Go 同款论证（元素计数按字节，
+  缺口 RS1）；`&str` 必须是合法 UTF-8，孤立代理项与非 UTF-8 字节无法表达
+  （缺口 RS2，语言限制）；
+- 结果枚举叫 `Status`（避免与 `std::result::Result` 混淆）；`Parser` 不绑定
+  词法器，`parse_program(&mut lexer, ...)` 每次显式传入；
+- 更多细节见 [Rust 使用指南](./docs/zh-cn/guide-rust.md)。
+
 ## 示例程序
 
-六套实现各有一份可运行的 `demo01`，使用**同一段输入与同一输出格式**，输出可逐字节比对
+八套实现各有一份可运行的 `demo01`，使用**同一段输入与同一输出格式**，输出可逐字节比对
 （见[跨实现通用测试计划](./docs/zh-cn/test-plan.md) 第 5.1 节的「demo 门禁」）：
 
 ```bash
@@ -212,6 +267,8 @@ node nodejs/demo/demo01.js        # JavaScript
 csharp\demo.cmd                   # C#
 python python/demo/demo01.py      # Python
 lua lua/demo/demo01.lua           # Lua
+go\demo.cmd                       # Go
+rust\demo.cmd                     # Rust
 ```
 
 不带参数时解析内置示例；传入文件路径则解析该文件（UTF-8）。
@@ -226,8 +283,10 @@ lua lua/demo/demo01.lua           # Lua
 - 整个仓库共用一个版本号，正式版本用 annotated tag 锚定（`v` 前缀）；
 - 版本常量内嵌在各实现里，拷走后可自报家门：C++ `Nevext::kVersion`、
   JavaScript `VERSION`、Python `__version__`、C# `Nevext.Info.Version`、
-  GDScript `Nevext.VERSION`、Lua `Nevext.VERSION`；
-- 版本号共有十个落点（六套源码 + CMake / package.json / csproj / CHANGELOG），
+  GDScript `Nevext.VERSION`、Lua `Nevext.VERSION`、Go `nevext.Version`、
+  Rust `nevext::VERSION`；
+- 版本号共有十二个落点（八套源码 + CMake / package.json / csproj /
+  Cargo.toml / CHANGELOG），
   一致性由零依赖脚本守护：`python tools/check_version.py`。
 
 ## 测试
@@ -250,6 +309,12 @@ python python/test/test_main.py
 
 # Lua（5.4+）
 lua lua/test/test_main.lua
+
+# Go（1.21+）
+go\test.cmd
+
+# Rust（1.70+）
+rust\test.cmd
 ```
 
 各套件都支持 `--dump`，按同一行格式打印语料的实际结果，两两 diff 即可显形实现之间的分歧：
@@ -274,6 +339,14 @@ diff --strip-trailing-cr \
 diff --strip-trailing-cr \
      <(./cpp/build/test/nevext_test --dump) \
      <(lua lua/test/test_main.lua --dump)
+
+diff --strip-trailing-cr \
+     <(./cpp/build/test/nevext_test --dump) \
+     <(cd go && go run ./test --dump)
+
+diff --strip-trailing-cr \
+     <(./cpp/build/test/nevext_test --dump) \
+     <(cd rust && cargo run -q --bin nevext_test -- --dump)
 ```
 
 ## 文档
@@ -285,7 +358,9 @@ diff --strip-trailing-cr \
 - [C# 使用指南](./docs/zh-cn/guide-csharp.md) —— 集成、API、已知限制
 - [Python 使用指南](./docs/zh-cn/guide-python.md) —— 集成、API、已知限制
 - [Lua 使用指南](./docs/zh-cn/guide-lua.md) —— 集成、API、已知限制
-- [跨实现通用测试计划](./docs/zh-cn/test-plan.md) —— 六套实现共用的语料与断言约定
+- [Go 使用指南](./docs/zh-cn/guide-go.md) —— 集成、API、已知限制
+- [Rust 使用指南](./docs/zh-cn/guide-rust.md) —— 集成、API、已知限制
+- [跨实现通用测试计划](./docs/zh-cn/test-plan.md) —— 八套实现共用的语料与断言约定
 - [C++ 开发说明](./cpp/docs/development.md) —— 代码格式化配置、目录职责、代码约定、提交前检查清单
 - [C++ 测试计划](./cpp/docs/test-plan.md) —— C++ 私有套件（LEX / PAR / ERR）
 - [GDScript 测试计划](./gdscript/docs/test-plan.md) —— GDScript 私有套件与 Godot 踩坑清单
@@ -293,6 +368,8 @@ diff --strip-trailing-cr \
 - [C# 测试计划](./csharp/docs/test-plan.md) —— C# 私有套件与实现要点
 - [Python 测试计划](./python/docs/test-plan.md) —— Python 私有套件与实现要点
 - [Lua 测试计划](./lua/docs/test-plan.md) —— Lua 私有套件与实现要点
+- [Go 测试计划](./go/docs/test-plan.md) —— Go 私有套件与实现要点
+- [Rust 测试计划](./rust/docs/test-plan.md) —— Rust 私有套件与实现要点
 
 ## 开源协议
 
