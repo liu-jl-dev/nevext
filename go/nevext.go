@@ -33,7 +33,7 @@ import (
 )
 
 // 库版本。与 CHANGELOG.md、git tag（v 前缀）同步更新；落点一致性见 tools/check_version.py。
-const Version = "0.3.0"
+const Version = "0.4.0"
 
 // 错误消息常量，与 C++ 的消息表逐字一致（含句号后的空格）
 const (
@@ -41,19 +41,6 @@ const (
 	InvalidEscapeMessage = "invalid escape character. "
 	UnexpectedMessage    = "unexpected token. "
 )
-
-// 转义表，与 C++ 的 Parser::escapeMap 逐项一致（没有「反斜杠 + 换行」续行）
-var escapeMap = map[byte]string{
-	'\\': "\\",
-	'\'': "'",
-	'"':  "\"",
-	'n':  "\n",
-	'r':  "\r",
-	't':  "\t",
-	'v':  "\v",
-	'b':  "\b",
-	'f':  "\f",
-}
 
 // isWhite 判断是否空白字符（空白与分隔字符集，与 C++ 的 whiteChars 逐项一致）
 func isWhite(c byte) bool {
@@ -276,10 +263,60 @@ func (l *Lexer) pushError(msg string) {
 	l.Errors = append(l.Errors, "line "+strconv.Itoa(l.Line)+": "+msg)
 }
 
-// ExpandEscapes 展开引号串里的转义序列。与 C++ 的 Parser::escape 一致：
-// 失败时 val 保留失败点之前已展开的部分。
-// 返回 (err, val, reason)，reason 为 "unclosed" | "invalid"，用于错误消息。
-func ExpandEscapes(src string) (Result, string, string) {
+// 转义表两套：Nevext 默认表（classic 九项 + \uXXXX，v0.4.0 起）与严格 JSON 表。
+// JSON 转义表来自 json.org 语法图（与 ECMA-404 一致）：
+// \" \\\\ \\/ \b \f \n \r \t \uXXXX（4 位十六进制码点，大小写均可；
+// 不含 \' 与 \v）。三种转义函数见 NullEscape / NevextEscape / JsonEscape；
+// v0.4.0 起 Parser 默认使用 NevextEscape（对 v0.3.0 及之前向后兼容）。
+var nevextEscapeMap = map[byte]string{
+	'\\': "\\",
+	'\'': "'",
+	'"':  "\"",
+	'n':  "\n",
+	'r':  "\r",
+	't':  "\t",
+	'v':  "\v",
+	'b':  "\b",
+	'f':  "\f",
+}
+
+var jsonEscapeMap = map[byte]string{
+	'"':  "\"",
+	'\\': "\\",
+	'/':  "/",
+	'b':  "\b",
+	'f':  "\f",
+	'n':  "\n",
+	'r':  "\r",
+	't':  "\t",
+}
+
+// EscapeFunc 转义函数签名：返回 (err, val, reason)；
+// 失败时 val 保留已展开前缀，reason 为 "unclosed" | "invalid"。
+// 三个内置实现见 NullEscape / NevextEscape / JsonEscape。
+type EscapeFunc func(src string) (Result, string, string)
+
+// NullEscape 不转义：原样返回（err 恒为 Success）。
+func NullEscape(src string) (Result, string, string) {
+	return Success, src, ""
+}
+
+// NevextEscape Nevext 默认转义（v0.4.0 起）：classic 九项 + \uXXXX。
+// 对 v0.3.0 及之前向后兼容：既有转义序列行为不变，只有 \u 从非法变合法。
+func NevextEscape(src string) (Result, string, string) {
+	return escapeWith(src, nevextEscapeMap, true)
+}
+
+// JsonEscape 严格 JSON 转义：\" \\\\ \\/ \b \f \n \r \t \uXXXX
+// （表来自 json.org 语法图 / ECMA-404；不含 \' 与 \v）。
+// \uXXXX 按 UTF-8 编码产出；代理区码点 string(rune) 会落成 U+FFFD
+// （Go 的 rune→string 规则，见文档差异登记）。
+func JsonEscape(src string) (Result, string, string) {
+	return escapeWith(src, jsonEscapeMap, true)
+}
+
+// escapeWith 统一展开骨架。
+func escapeWith(src string, m map[byte]string, jsonUnicode bool) (Result, string, string) {
 	var out []byte
 	i := 0
 	for i < len(src) {
@@ -295,7 +332,19 @@ func ExpandEscapes(src string) (Result, string, string) {
 			return Error, string(out), "unclosed"
 		}
 		c := src[pos+1]
-		mapped, ok := escapeMap[c]
+		if jsonUnicode && c == 'u' {
+			if pos+6 > len(src) {
+				return Error, string(out), "invalid"
+			}
+			cp, err := strconv.ParseUint(src[pos+2:pos+6], 16, 32)
+			if err != nil {
+				return Error, string(out), "invalid"
+			}
+			out = append(out, string(rune(cp))...)
+			i = pos + 6
+			continue
+		}
+		mapped, ok := m[c]
 		if !ok {
 			return Error, string(out), "invalid"
 		}
@@ -305,24 +354,38 @@ func ExpandEscapes(src string) (Result, string, string) {
 	return Success, string(out), ""
 }
 
-// Parser 语法分析器。
-type Parser struct {
-	Lexer  *Lexer
-	Errors []string
-	token  Token
-	failed bool
+// ExpandEscapes 展开引号串里的转义序列（历史入口，与 Parser 默认一致；
+// 即 NevextEscape 的同义词）。
+func ExpandEscapes(src string) (Result, string, string) {
+	return NevextEscape(src)
 }
 
-// NewParser 创建语法分析器并绑定词法器。
-func NewParser(lexer *Lexer) *Parser {
+// Parser 语法分析器。
+type Parser struct {
+	Lexer      *Lexer
+	Errors     []string
+	EscapeFunc EscapeFunc // 转义函数（默认 NevextEscape，可替换）
+	token      Token
+	failed     bool
+}
+
+// NewParser 创建语法分析器并绑定词法器。escapeFunc 传 nil 时用默认的
+// NevextEscape；Reset 同理。
+func NewParser(lexer *Lexer, escapeFunc ...EscapeFunc) *Parser {
 	p := &Parser{}
-	p.Reset(lexer)
+	p.Reset(lexer, escapeFunc...)
 	return p
 }
 
 // Reset 重绑词法器并清空上一轮的错误记录，复用同一对象。
-func (p *Parser) Reset(lexer *Lexer) {
+// 可选的 escapeFunc 用于替换转义函数；不传则保持当前值不变。
+func (p *Parser) Reset(lexer *Lexer, escapeFunc ...EscapeFunc) {
 	p.Lexer = lexer
+	if len(escapeFunc) > 0 && escapeFunc[0] != nil {
+		p.EscapeFunc = escapeFunc[0]
+	} else if p.EscapeFunc == nil {
+		p.EscapeFunc = NevextEscape
+	}
 	p.Errors = nil
 	p.token = Token{}
 	p.failed = false
@@ -392,7 +455,7 @@ func (p *Parser) toLiteral(token Token) string {
 	if token.Type != QuotedStr {
 		return token.Literal
 	}
-	err, val, reason := ExpandEscapes(token.Literal)
+	err, val, reason := p.EscapeFunc(token.Literal)
 	if err != Success {
 		msg := InvalidEscapeMessage
 		if reason == "unclosed" {

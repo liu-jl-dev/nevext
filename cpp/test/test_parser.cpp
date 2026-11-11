@@ -63,8 +63,9 @@ NEVEXT_TEST(Parser, OnlyCommentsAndWhitespace) {
 }
 
 // ---------------------------------------------------------------- PAR-06
-// 完整转义表（overview.md「转义字符」一节全部 9 项）
-NEVEXT_TEST(Parser, AllSupportedEscapes) {
+// 默认（NevextEscape）转义表全项：\\ \' \" \n \r \t \v \b \f 与 \u4e2d
+// （classic 九项 + \uXXXX；v0.4.0 起为默认，对 v0.3.0 向后兼容）
+NEVEXT_TEST(Parser, AllNevextEscapes) {
   std::u16string src;
   src += u'"';
   src += u'\\'; src += u'\\';  // \\ → 反斜杠
@@ -76,6 +77,8 @@ NEVEXT_TEST(Parser, AllSupportedEscapes) {
   src += u'\\'; src += u'v';   // \v → 垂直制表
   src += u'\\'; src += u'b';   // \b → 退格
   src += u'\\'; src += u'f';   // \f → 换页
+  src += u'\\'; src += u'u';   // \u4e2d → 中
+  src += u'4'; src += u'e'; src += u'2'; src += u'd';
   src += u'"';
 
   auto out = Run(src);
@@ -91,9 +94,36 @@ NEVEXT_TEST(Parser, AllSupportedEscapes) {
   expect += u'\v';
   expect += u'\b';
   expect += u'\f';
-
+  expect += u'\u4e2d';
   ExpectProgram(ctx, out.prog, {{1, {expect}}});
-  CHECK_EQ(std::size_t(9), expect.size());
+}
+
+// ---------------------------------------------------------------- PAR-06b
+// JsonEscape 注入后为严格 JSON 表：\' 与 \/ 的行为与默认表相反
+NEVEXT_TEST(Parser, JsonEscapeTableWhenInjected) {
+  // \' 在 json_escape 下非法：报错并保留前缀
+  std::u16string src = u"'a\\'b'";
+  Nevext::Lexer lexer(src);
+  Nevext::Parser parser(lexer);
+  parser.escapeFunc = Nevext::JsonEscape;
+  Program prog;
+  Result r = parser.ParseProgram(prog, true);
+  CHECK_EQ(ToStr(Result::Error), ToStr(r));
+  ExpectErrors(ctx, parser.errors, {std::string("line 1: invalid escape character. ")});
+  ExpectProgram(ctx, prog, {{1, {u"a"}}});
+}
+
+// ---------------------------------------------------------------- PAR-06c
+// null_escape 注入后转义序列原样保留（含非法项也不报错）
+NEVEXT_TEST(Parser, NullEscapeKeepsEverythingVerbatim) {
+  std::u16string src = u"\"a\\qb\"";
+  Nevext::Lexer lexer(src);
+  Nevext::Parser parser(lexer);
+  parser.escapeFunc = Nevext::NullEscape;
+  Program prog;
+  Result r = parser.ParseProgram(prog, true);
+  CHECK_EQ(ToStr(Result::Success), ToStr(r));
+  ExpectProgram(ctx, prog, {{1, {u"a\\qb"}}});
 }
 
 // ---------------------------------------------------------------- PAR-07

@@ -5,6 +5,7 @@ extends RefCounted
 # 实例复用、终止性、长输入。跨实现的那部分语料在 test_conformance.gd。
 
 const Framework := preload("res://test/test_framework.gd")
+const Nevext := preload("res://nevext/nevext.gd")  # 未注册全局类名，preload 引入
 
 
 # ------------------------------------------------------------------ 注册

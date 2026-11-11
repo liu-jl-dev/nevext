@@ -28,7 +28,7 @@
 from enum import IntEnum
 
 # 库版本。与 CHANGELOG.md、git tag（v 前缀）同步更新；落点一致性见 tools/check_version.py。
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 # 错误消息常量，与 C++ 的消息表逐字一致（含句号后的空格）
 UNCLOSED_MESSAGE = "unclosed string literal. "
@@ -38,19 +38,6 @@ UNEXPECTED_MESSAGE = "unexpected token. "
 # 空白与分隔字符集，必须与 C++ 的 whiteChars / rawStrEndChars 逐项一致
 WHITE_CHARS = frozenset(" ,\t\v\f\n\r")
 RAW_STR_END_CHARS = frozenset(";\"'")
-
-# 转义表，与 C++ 的 Parser::escapeMap 逐项一致（没有「反斜杠 + 换行」续行）
-ESCAPE_MAP = {
-    "\\": "\\",
-    "'": "'",
-    '"': '"',
-    "n": "\n",
-    "r": "\r",
-    "t": "\t",
-    "v": "\v",
-    "b": "\b",
-    "f": "\f",
-}
 
 
 class TokenType(IntEnum):
@@ -233,10 +220,50 @@ class Lexer:
         self.errors.append("line " + str(self.line) + ": " + msg)
 
 
-def expand_escapes(src):
-    """展开引号串里的转义序列。与 C++ 的 Parser::escape 一致：
-    失败时 val 保留失败点之前已展开的部分。
-    返回 (err, val, reason)，reason 为 "unclosed" | "invalid"，用于错误消息。"""
+# 转义表两套：Nevext 默认表（classic 九项 + \uXXXX，v0.4.0 起）与严格 JSON 表。
+# JSON 转义表来自 json.org 语法图（与 ECMA-404 一致）：
+# \" \\ \\/ \b \f \n \r \t \uXXXX（4 位十六进制码点，大小写均可；
+# 不含 \' 与 \v）。三种转义函数见 null_escape / nevext_escape / json_escape；
+# v0.4.0 起 Parser 默认使用 nevext_escape（对 v0.3.0 及之前向后兼容）。
+_NEVEXT_ESCAPE_MAP = {
+    "\\": "\\", "'": "'", '"': '"',
+    "n": "\n", "r": "\r", "t": "\t",
+    "v": "\v", "b": "\b", "f": "\f",
+}
+_JSON_ESCAPE_MAP = {
+    '"': '"', "\\": "\\", "/": "/",
+    "b": "\b", "f": "\f", "n": "\n",
+    "r": "\r", "t": "\t",
+}
+_JSON_ESCAPE_MAP = {
+    '"': '"', "\\": "\\", "/": "/",
+    "b": "\b", "f": "\f", "n": "\n",
+    "r": "\r", "t": "\t",
+}
+
+
+def null_escape(src):
+    """不转义：原样返回（err 恒为 Success）。"""
+    return (Result.Success, src, "")
+
+
+def nevext_escape(src):
+    r"""Nevext 默认转义（v0.4.0 起）：classic 九项 + \uXXXX。
+    对 v0.3.0 及之前向后兼容：既有转义序列行为不变，只有 \u 从非法变合法。
+    返回 (err, val, reason)，失败时 val 保留已展开前缀。"""
+    return _escape_with(src, _NEVEXT_ESCAPE_MAP, json_unicode=True)
+
+
+def json_escape(src):
+    r"""严格 JSON 转义：\" \\ \\/ \b \f \n \r \t \uXXXX
+    （表来自 json.org 语法图 / ECMA-404；不含 \' 与 \v）。
+    \uXXXX 产出对应码点；代理区码点 Python 允许产出（见文档差异登记）。"""
+    return _escape_with(src, _JSON_ESCAPE_MAP, json_unicode=True)
+
+
+def _escape_with(src, escape_map, json_unicode=False):
+    """统一展开骨架：失败时 val 保留失败点之前已展开的部分。
+    reason 为 "unclosed" | "invalid"，用于错误消息。"""
     out = []
     i = 0
     while i < len(src):
@@ -249,22 +276,43 @@ def expand_escapes(src):
             # 输入串末尾是转义字符（正常 token 流里到不了这里，防御性保留）
             return (Result.Error, "".join(out), "unclosed")
         c = src[pos + 1]
-        if c not in ESCAPE_MAP:
+        if json_unicode and c == "u":
+            hex4 = src[pos + 2 : pos + 6]
+            if len(hex4) != 4:
+                return (Result.Error, "".join(out), "invalid")
+            try:
+                out.append(chr(int(hex4, 16)))
+            except ValueError:
+                return (Result.Error, "".join(out), "invalid")
+            i = pos + 6
+            continue
+        if c not in escape_map:
             return (Result.Error, "".join(out), "invalid")
-        out.append(ESCAPE_MAP[c])
+        out.append(escape_map[c])
         i = pos + 2
     return (Result.Success, "".join(out), "")
+
+
+def expand_escapes(src):
+    """展开引号串里的转义序列（历史入口，与 Parser 默认一致；
+    即 nevext_escape 的同义词）。"""
+    return nevext_escape(src)
 
 
 class Parser:
     """语法分析器。"""
 
-    def __init__(self, lexer=None):
-        self.reset(lexer)
+    def __init__(self, lexer=None, escape_func=nevext_escape):
+        """escape_func 为转义函数（默认 nevext_escape），可替换为
+        json_escape / null_escape 或同签名自定义函数。"""
+        self.reset(lexer, escape_func)
 
-    def reset(self, lexer=None):
-        """重绑词法器并清空上一轮的错误记录，复用同一对象。"""
+    def reset(self, lexer=None, escape_func=None):
+        """重绑词法器并清空上一轮的错误记录，复用同一对象。
+        escape_func 传 None 时保持当前转义函数不变。"""
         self.lexer = lexer
+        if escape_func is not None:
+            self.escape_func = escape_func
         self.errors = []
         self._token = None
         self._failed = False
@@ -321,7 +369,7 @@ class Parser:
         """只有 QuotedStr 才展开转义；失败保留部分结果并记录错误。"""
         if token.type != TokenType.QuotedStr:
             return token.literal
-        err, val, reason = expand_escapes(token.literal)
+        err, val, reason = self.escape_func(token.literal)
         if err != Result.Success:
             msg = UNCLOSED_MESSAGE if reason == "unclosed" else INVALID_ESCAPE_MESSAGE
             self.errors.append("line " + str(token.line) + ": " + msg)

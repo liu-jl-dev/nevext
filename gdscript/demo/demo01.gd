@@ -17,8 +17,17 @@ extends SceneTree
 # extends SceneTree 并实现 _initialize()。
 # ---------------------------------------------------------------------------
 
+# nevext.gd 未注册全局类名，用 preload 引入后即可按 Nevext.XXX 访问
+const Nevext := preload("res://nevext/nevext.gd")
+
 # 内置示例：单行注释、裸串与引号串、多行注释、末句省略分号。
-const BUILTIN := '  // 单行注释\n  hello "world";\n  /*            \n  多行注释      \n  */            \n  海上生明月 天涯共此时 // 最后一个语句可以没有分号结尾'
+const BUILTIN := '''
+// 单行注释\n  hello "world";
+/*
+    多行注释
+*/
+海上生明月 天涯共此时 // 最后一个语句可以没有分号结尾
+'''
 
 
 # 无参数时用内置示例；传入文件路径时按 UTF-8 读入，失败返回 null。

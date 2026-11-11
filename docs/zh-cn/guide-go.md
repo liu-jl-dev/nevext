@@ -1,13 +1,15 @@
 # Nevext Go 使用指南
 
 本指南介绍 Go 实现（Go 1.21+）的集成方式与 API 用法。关于语言本身的语法规则，
-请先阅读[语法概述](./overview.md)；行为与 C++ 参考实现逐条一致，并由 55 条跨实现
+请先阅读[语法概述](./overview.md)；行为与 C++ 参考实现逐条一致，并由 60 条跨实现
 通用语料与 dump 门禁守护（见[跨实现通用测试计划](./test-plan.md)）。
 
 ## 集成
 
-零依赖单文件，把 `go/nevext/nevext.go` 拷进你的工程（放进任意包目录即可，
-`go.mod` 不需要跟着走——它只为仓库内的测试入口存在）：
+零依赖单文件，库源码位于 module 根目录 `go/nevext.go`（包名 `nevext`），
+**import 只有一层**——工程布局与 [stope-lang](https://github.com/liu-jl-dev/stope-lang)
+的 Go 侧一致。拷进你的工程时放进任意包目录即可，`go.mod` 不需要跟着走
+——它只为仓库内的测试入口存在：
 
 ```go
 package main
@@ -99,6 +101,22 @@ nevext.ExpandEscapes(src)               // -> (err, val, reason)
 同一行的多处错误各记一条，不做去重。复用 `Parser` 前请调用 `parser.Reset(...)`，
 只有 `Reset` 会清空错误容器。
 
+## 转义函数（可替换）
+
+v0.4.0 起默认转义为 **NevextEscape**（原九项表 + `\uXXXX`，对 v0.3.0 及
+之前向后兼容；`\u` 表项与 [json.org](https://www.json.org/json-zh.html)
+语法图 / ECMA-404 一致，见[语法概述](./overview.md#转义字符)）。
+`parser.EscapeFunc`（类型 `EscapeFunc`）可替换（构造可变参数亦可）：
+
+```go
+parser := nevext.NewParser(lexer)                      // 默认 NevextEscape
+parser := nevext.NewParser(lexer, nevext.NullEscape)   // 不转义，原样返回
+parser := nevext.NewParser(lexer, nevext.JsonEscape)   // 严格 JSON 表（无 \' 与 \v，多 \/）
+```
+
+三种函数签名统一为 `func(string) (Result, string, string)`；失败时 val
+保留已展开前缀。历史入口 `ExpandEscapes(src)` 保留（= `NevextEscape` 的同义词）。
+
 ## 与其它实现的差异
 
 | 项 | C++ | JavaScript | C# | Python | Lua | Go |
@@ -135,3 +153,5 @@ go\demo.cmd [文件]           # Windows 便捷入口（任意 cwd）
 - Go string 可容纳任意字节（孤立高位字节、非 UTF-8 序列都会原样保留），
   这是与 Rust / Python 的差异点，行为见通用语料的字节保真用例；
 - 性能与 C++ 相比有常数级差距（游标实现，整体 O(n)），大输入请自行评估。
+
+> AI生成

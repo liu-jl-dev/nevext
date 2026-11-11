@@ -32,7 +32,7 @@
 // ----------------------------------------------------------------------------
 
 // 库版本。与 CHANGELOG.md、git tag（v 前缀）同步更新；落点一致性见 tools/check_version.py。
-pub const VERSION: &str = "0.3.0";
+pub const VERSION: &str = "0.4.0";
 
 // 错误消息常量，与 C++ 的消息表逐字一致（含句号后的空格）
 pub const UNCLOSED_MESSAGE: &str = "unclosed string literal. ";
@@ -290,8 +290,13 @@ fn is_raw_str_end(c: u8) -> bool {
     c == b';' || c == b'"' || c == b'\''
 }
 
-/// 转义表，与 C++ 的 Parser::escapeMap 逐项一致（没有「反斜杠 + 换行」续行）
-fn escape_char(c: u8) -> Option<&'static str> {
+/// 转义函数签名：返回 (err, val, reason)；失败时 val 保留已展开前缀，
+/// reason 为 "unclosed" | "invalid"。三个内置实现见
+/// null_escape / nevext_escape / json_escape。
+pub type EscapeFunc = fn(&str) -> (Status, String, &'static str);
+
+/// Nevext 默认转义表（classic 九项 + \uXXXX，v0.4.0 起）。
+fn nevext_escape_char(c: u8) -> Option<&'static str> {
     match c {
         b'\\' => Some("\\"),
         b'\'' => Some("'"),
@@ -306,10 +311,47 @@ fn escape_char(c: u8) -> Option<&'static str> {
     }
 }
 
-/// 展开引号串里的转义序列。与 C++ 的 Parser::escape 一致：
-/// 失败时 val 保留失败点之前已展开的部分。
-/// 返回 (err, val, reason)，reason 为 "unclosed" | "invalid"，用于错误消息。
-pub fn expand_escapes(src: &str) -> (Status, String, &'static str) {
+/// 严格 JSON 表（表来自 json.org 语法图，与 ECMA-404 一致；不含 \' 与 \v）。
+fn json_escape_char(c: u8) -> Option<&'static str> {
+    match c {
+        b'"' => Some("\""),
+        b'\\' => Some("\\"),
+        b'/' => Some("/"),
+        b'b' => Some("\x08"),
+        b'f' => Some("\x0c"),
+        b'n' => Some("\n"),
+        b'r' => Some("\r"),
+        b't' => Some("\t"),
+        _ => None,
+    }
+}
+
+/// 不转义：原样返回（err 恒为 Success）。
+pub fn null_escape(src: &str) -> (Status, String, &'static str) {
+    (Status::Success, src.to_string(), "")
+}
+
+/// Nevext 默认转义（v0.4.0 起）：classic 九项 + \uXXXX。
+/// 对 v0.3.0 及之前向后兼容：既有转义序列行为不变，只有 \u 从非法变合法。
+/// 失败时 val 保留已展开前缀。
+pub fn nevext_escape(src: &str) -> (Status, String, &'static str) {
+    escape_with(src, nevext_escape_char, true)
+}
+
+/// 严格 JSON 转义：\" \\ \\/ \b \f \n \r \t \uXXXX
+/// （表来自 json.org 语法图 / ECMA-404；不含 \' 与 \v）。
+/// \uXXXX 按 UTF-8 编码产出；代理区等非法码点 char::from_u32
+/// 返回 None，按非法转义处理（见文档差异登记）。
+pub fn json_escape(src: &str) -> (Status, String, &'static str) {
+    escape_with(src, json_escape_char, true)
+}
+
+/// 展开骨架：返回 (err, val, reason)，reason 为 "unclosed" | "invalid"。
+fn escape_with(
+    src: &str,
+    escape_char: fn(u8) -> Option<&'static str>,
+    json_unicode: bool,
+) -> (Status, String, &'static str) {
     let mut out = String::new();
     let bytes = src.as_bytes();
     let mut i = 0usize;
@@ -328,6 +370,36 @@ pub fn expand_escapes(src: &str) -> (Status, String, &'static str) {
             return (Status::Error, out, "unclosed");
         }
         let c = bytes[pos + 1];
+        if json_unicode && c == b'u' {
+            // \uXXXX：4 位十六进制码点（字节级解析，避开 UTF-8 边界 panic）
+            if pos + 6 > bytes.len() {
+                return (Status::Error, out, "invalid");
+            }
+            let mut cp: u32 = 0;
+            let mut hex_ok = true;
+            for k in (pos + 2)..(pos + 6) {
+                let b = bytes[k];
+                let v = match b {
+                    b'0'..=b'9' => (b - b'0') as u32,
+                    b'a'..=b'f' => (b - b'a' + 10) as u32,
+                    b'A'..=b'F' => (b - b'A' + 10) as u32,
+                    _ => {
+                        hex_ok = false;
+                        break;
+                    }
+                };
+                cp = cp * 16 + v;
+            }
+            if !hex_ok {
+                return (Status::Error, out, "invalid");
+            }
+            match char::from_u32(cp) {
+                Some(ch) => out.push(ch),
+                None => return (Status::Error, out, "invalid"),
+            }
+            i = pos + 6;
+            continue;
+        }
         match escape_char(c) {
             None => return (Status::Error, out, "invalid"),
             Some(mapped) => out.push_str(mapped),
@@ -337,21 +409,48 @@ pub fn expand_escapes(src: &str) -> (Status, String, &'static str) {
     (Status::Success, out, "")
 }
 
+/// 展开引号串里的转义序列（历史入口，与 Parser 默认一致；
+/// 即 nevext_escape 的同义词）。
+pub fn expand_escapes(src: &str) -> (Status, String, &'static str) {
+    nevext_escape(src)
+}
+
 /// 语法分析器。不绑定词法器（借用检查器友好），每次调用显式传入。
-#[derive(Default)]
 pub struct Parser {
     pub errors: Vec<String>,
+    /// 转义函数（默认 nevext_escape：classic 九项 + \uXXXX，v0.4.0 起）。
+    /// 可替换为 json_escape / null_escape 或同签名自定义函数。
+    pub escape_func: EscapeFunc,
     token: Token,
     failed: bool,
 }
 
+impl Default for Parser {
+    fn default() -> Parser {
+        Parser {
+            errors: Vec::new(),
+            escape_func: nevext_escape,
+            token: Token::default(),
+            failed: false,
+        }
+    }
+}
+
 impl Parser {
-    /// 创建语法分析器。
+    /// 创建语法分析器（默认 nevext_escape）。
     pub fn new() -> Parser {
         Parser::default()
     }
 
+    /// 创建语法分析器并指定转义函数。
+    pub fn with_escape(escape_func: EscapeFunc) -> Parser {
+        let mut p = Parser::new();
+        p.escape_func = escape_func;
+        p
+    }
+
     /// 清空上一轮的错误记录，复用同一对象（词法器在 parse_program 时传入）。
+    /// 转义函数保持不变，需要替换时直接赋值 parser.escape_func。
     pub fn reset(&mut self) {
         self.errors.clear();
         self.token = Token::default();
@@ -431,7 +530,7 @@ impl Parser {
         if token.kind != TokenType::QuotedStr {
             return token.literal.clone();
         }
-        let (err, val, reason) = expand_escapes(&token.literal);
+        let (err, val, reason) = (self.escape_func)(&token.literal);
         if err != Status::Success {
             let msg = if reason == "unclosed" {
                 UNCLOSED_MESSAGE

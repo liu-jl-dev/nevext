@@ -2,10 +2,10 @@
 
 > 适用范围：`gdscript/nevext/nevext.gd`（Godot 4.x）
 > 测试代码目录：`gdscript/test/`
-> **跨实现通用语料不在本文档**：C++ 与 GDScript 共用的 55 条语料（ID `A01`~`H04`）
+> **跨实现通用语料不在本文档**：C++ 与 GDScript 共用的 60 条语料（ID `A01`~`H04`）
 > 定义在 `docs/zh-cn/test-plan.md`，落在 `gdscript/test/test_conformance.gd`。
 > 本文档只描述 GDScript 私有的 `Impl` 套件，以及跑 Godot 测试时特有的坑。
-> 最后更新：2026-10-17
+> 最后更新：2026-11-10
 
 ## 1. 目标与非目标
 
@@ -110,10 +110,10 @@ diff --strip-trailing-cr \
 
 | 坑 | 现象 | 处置 |
 | --- | --- | --- |
-| 删了 `.godot/` | `Parse Error: Identifier "Nevext" not declared in the current scope` | 全局类注册信息在 `.godot/global_script_class_cache.cfg`。不要删；新检出先 `--headless --editor --quit` 扫一次 |
+| 删了 `.godot/` | （v0.3.0 及之前）`Parse Error: Identifier "Nevext" not declared in the current scope` | 旧版靠 `global_script_class_cache.cfg` 注册全局类；v0.4.0 起改为 `preload` 引入，无缓存也能直接跑（实测无 `.godot/` 副本 60 用例全过） |
 | `var x := load(...)` | 整个文件解析失败：`Cannot infer the type of "x" variable` | `load()` 返回无静态类型的 Variant，必须显式标注类型。用 `godot --check-only --script 文件` 才能看到这条报错 |
 | 套件实例只放局部变量 | `Attempt to call function 'null::check_case (Callable)' on a null instance` | `Callable.bind` 不增加引用计数，`register()` 返回后 RefCounted 被释放。实例要挂在 `static var` 上 |
-| 内部类访问外层成员 | 行为不可靠 | `test_framework.gd` 因此不用内部类，改成「静态函数 + 显式传 `ctx` 字典」 |
+| 内部类访问外层成员 | 行为不可靠 | `test_framework.gd` 因此不用内部类，改成「静态函数 + 显式传 `ctx` 字典」；`nevext.gd` 自 0.4.0 起把词法器常量与转义实现内聚到 `Lexer`（去掉全局类名后必须自包含） |
 | `const` 里调内置函数 | 解析失败 | 语料表用了 `char(0x08)` 构造不可见字符，所以写成 `static func cases()` 而不是 `const` |
 | 脚本参数少了 `--` | `--dump` / `-v` 被 Godot 自己吃掉 | `--script xxx.gd -- <参数>`，`OS.get_cmdline_user_args()` 读取 |
 | Windows 行尾 | 与 C++ 侧 dump 逐行都被判不同 | C++ 的 stdout 在 Windows 走文本模式会把 `\n` 变 CRLF，Godot 输出 LF；diff 加 `--strip-trailing-cr` |
@@ -123,10 +123,11 @@ diff --strip-trailing-cr \
 
 Godot 4.7.2 stable (mono)，headless：
 
-- `Conformance.*`：55 个用例 / 400 条断言通过
+- `Conformance.*`：60 个用例 / 406 条断言通过
 - `Impl.*`：5 个用例 / 46 条断言通过
-- 合计 **60 个用例 / 446 条断言**，含引擎启动约 2.7 秒
+- 合计 **65 个用例 / 478 条断言**，含引擎启动约 2.7 秒
 - 与 C++ 侧 `--dump` 的输出逐字节一致（55 行）
+- 2026-11-10（v0.4.0）复测：无 `.godot/` 缓存的全新副本同样 60 用例全过
 
 ## 8. 后续计划
 
@@ -136,3 +137,5 @@ Godot 4.7.2 stable (mono)，headless：
 3. **CI 接入**：同时跑 `ctest`（C++）与本套件（GDScript），并把两侧 `--dump` 的 diff 作为一致性门禁。
 4. **`escape_func` 的更多形态**：目前只测了 `null_escape`，可补一个自定义失败用例，
    验证「保留已展开前缀 + 一条 `InvalidEscape`」这条契约在自定义函数下也成立。
+
+> AI生成

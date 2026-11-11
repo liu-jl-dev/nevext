@@ -41,7 +41,8 @@ const CASES = [
   { id: 'B05', src: "'\"' \"'\"",              ok: true,  pause: true,  prog: [St(1, ['"', "'"])],                            errs: [] },
   { id: 'B06', src: '"a"b',                    ok: true,  pause: true,  prog: [St(1, ['a', 'b'])],                            errs: [] },
 
-  // ---- C 组 转义（只在语法层对 QuotedStr 展开）
+  // ---- C 组 转义（只在语法层对 QuotedStr 展开；v0.4.0 起默认 nevextEscape：
+  // classic 九项 + \uXXXX，对 v0.3.0 及之前向后兼容）
   { id: 'C01', src: '"a\\nb"',                 ok: true,  pause: true,  prog: [St(1, ['a\nb'])],                              errs: [] },
   { id: 'C02', src: '"\\n\\r\\t\\v\\b\\f"',    ok: true,  pause: true,  prog: [St(1, ['\n\r\t\v\b\f'])],                      errs: [] },
   { id: 'C03', src: '"a\\\\"',                 ok: true,  pause: true,  prog: [St(1, ['a\\'])],                               errs: [] },
@@ -52,6 +53,14 @@ const CASES = [
   // X1：转义表里没有「反斜杠 + 换行」，串内续行写法最终报非法转义
   { id: 'C08', src: '"a\\\nb"',                ok: false, pause: true,  prog: [St(1, ['a'])],                                 errs: [Er(1, 'InvalidEscape')] },
   { id: 'C09', src: '"x\\ny\\tz"',             ok: true,  pause: true,  prog: [St(1, ['x\ny\tz'])],                           errs: [] },
+  // ---- C 组 \u 扩展（v0.4.0；\u 表项与 json.org 语法图 / ECMA-404 一致）
+  // \/ 不在默认表（jsonEscape 才有）：报错并保留前缀
+  { id: 'C10', src: '"a\\/b"',                 ok: false, pause: true,  prog: [St(1, ['a'])],                                 errs: [Er(1, 'InvalidEscape')] },
+  { id: 'C11', src: '"\\u4e2d\\u6587"',        ok: true,  pause: true,  prog: [St(1, ['\u4e2d\u6587'])],                      errs: [] },
+  { id: 'C12', src: '"\\u4E2D"',               ok: true,  pause: true,  prog: [St(1, ['\u4e2d'])],                            errs: [] },
+  { id: 'C13', src: '"a\\ub"',                 ok: false, pause: true,  prog: [St(1, ['a'])],                                 errs: [Er(1, 'InvalidEscape')] },
+  // \' 在默认表合法（Nevext 两种引号串都需要它；jsonEscape 下才非法）
+  { id: 'C14', src: "'a\\'b'",                 ok: true,  pause: true,  prog: [St(1, ["a'b"])],                               errs: [] },
 
   // ---- D 组 裸串边界（裸串不展开转义）
   { id: 'D01', src: 'a\\b',                    ok: true,  pause: true,  prog: [St(1, ['a\\b'])],                              errs: [] },

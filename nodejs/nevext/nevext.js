@@ -25,7 +25,7 @@
 // ---------------------------------------------------------------------------
 
 /** 库版本。与 CHANGELOG.md、git tag（v 前缀）同步更新；落点一致性见 tools/check_version.py。 */
-export const VERSION = '0.3.0';
+export const VERSION = '0.4.0';
 
 /** 词法单元类型。取值与 C++ 的 TokenType 枚举逐项对应（Success 式的 0 起）。 */
 const TokenType = Object.freeze({
@@ -46,8 +46,14 @@ const Result = Object.freeze({
 const WHITE_CHARS = new Set([' ', ',', '\t', '\v', '\f', '\n', '\r']);
 const RAW_STR_END_CHARS = new Set([';', '"', "'"]);
 
-/** 转义表，与 C++ 的 Parser::escapeMap 逐项一致（没有「反斜杠 + 换行」续行）。 */
-const ESCAPE_MAP = Object.freeze({
+/**
+ * 转义表两套：Nevext 默认表（classic 九项 + \uXXXX，v0.4.0 起）与严格 JSON 表。
+ * JSON 转义表来自 json.org 语法图（与 ECMA-404 一致）：
+ * \" \\ \\/ \b \f \n \r \t \uXXXX（4 位十六进制码点，大小写均可；
+ * 不含 \' 与 \v）。三种转义函数见 nullEscape / nevextEscape / jsonEscape；
+ * v0.4.0 起 Parser 默认使用 nevextEscape（对 v0.3.0 及之前向后兼容）。
+ */
+const NEVEXT_ESCAPE_MAP = Object.freeze({
   '\\': '\\',
   "'": "'",
   '"': '"',
@@ -57,6 +63,17 @@ const ESCAPE_MAP = Object.freeze({
   'v': '\v',
   'b': '\b',
   'f': '\f',
+});
+
+const JSON_ESCAPE_MAP = Object.freeze({
+  '"': '"',
+  '\\': '\\',
+  '/': '/',
+  'b': '\b',
+  'f': '\f',
+  'n': '\n',
+  'r': '\r',
+  't': '\t',
 });
 
 /** 词法单元。literal 为码元原文；EOF / Unexpected 时为空串。 */
@@ -245,12 +262,31 @@ class Lexer {
   }
 }
 
+/** 不转义：原样返回（err 恒为 Success）。 */
+function nullEscape(src) {
+  return { err: Result.Success, val: src, reason: '' };
+}
+
 /**
- * 展开引号串里的转义序列。与 C++ 的 Parser::escape 一致：
- * 失败时 val 保留失败点之前已展开的部分。
- * 返回 { err, val, reason }，reason 为 'unclosed' | 'invalid'，用于错误消息。
+ * Nevext 默认转义（v0.4.0 起）：classic 九项 + \uXXXX。
+ * 对 v0.3.0 及之前向后兼容：既有转义序列行为不变，只有 \u 从非法变合法。
+ * 失败时 val 保留已展开前缀。
  */
-function expandEscapes(src) {
+function nevextEscape(src) {
+  return _escapeWith(src, NEVEXT_ESCAPE_MAP, true);
+}
+
+/**
+ * 严格 JSON 转义：\" \\\\ \\/ \b \f \n \r \t \uXXXX
+ * （表来自 json.org 语法图 / ECMA-404；不含 \' 与 \v）。
+ * \uXXXX 产出 UTF-16 码元（代理区码点按原码元落盘，见文档差异登记）。
+ */
+function jsonEscape(src) {
+  return _escapeWith(src, JSON_ESCAPE_MAP, true);
+}
+
+/** 统一展开骨架：返回 { err, val, reason }，reason 为 'unclosed' | 'invalid'。 */
+function _escapeWith(src, escapeMap, jsonUnicode = false) {
   let out = '';
   let i = 0;
   while (i < src.length) {
@@ -265,24 +301,52 @@ function expandEscapes(src) {
       return { err: Result.Error, val: out, reason: 'unclosed' };
     }
     const c = src[pos + 1];
-    if (!Object.prototype.hasOwnProperty.call(ESCAPE_MAP, c)) {
+    if (jsonUnicode && c === 'u') {
+      const hex4 = src.slice(pos + 2, pos + 6);
+      if (!/^[0-9a-fA-F]{4}$/.test(hex4)) {
+        return { err: Result.Error, val: out, reason: 'invalid' };
+      }
+      out += String.fromCharCode(parseInt(hex4, 16));
+      i = pos + 6;
+      continue;
+    }
+    if (!Object.prototype.hasOwnProperty.call(escapeMap, c)) {
       return { err: Result.Error, val: out, reason: 'invalid' };
     }
-    out += ESCAPE_MAP[c];
+    out += escapeMap[c];
     i = pos + 2;
   }
   return { err: Result.Success, val: out, reason: '' };
 }
 
+/**
+ * 展开引号串里的转义序列（历史入口，与 Parser 默认一致；
+ * 即 nevextEscape 的同义词）。
+ */
+function expandEscapes(src) {
+  return nevextEscape(src);
+}
+
 /** 语法分析器。 */
 class Parser {
-  constructor(lexer = null) {
-    this.reset(lexer);
+  /**
+   * @param {Lexer|null} lexer
+   * @param {Function} escapeFunc 转义函数（默认 nevextEscape），
+   *   可替换为 jsonEscape / nullEscape 或同签名自定义函数。
+   */
+  constructor(lexer = null, escapeFunc = nevextEscape) {
+    this.reset(lexer, escapeFunc);
   }
 
-  /** 重绑词法器并清空上一轮的错误记录，复用同一对象。 */
-  reset(lexer = null) {
+  /**
+   * 重绑词法器并清空上一轮的错误记录，复用同一对象。
+   * escapeFunc 传 undefined 时保持当前转义函数不变。
+   */
+  reset(lexer = null, escapeFunc) {
     this.lexer = lexer;
+    if (escapeFunc !== undefined) {
+      this.escapeFunc = escapeFunc;
+    }
     this.errors = [];
     this._token = null;
     this._failed = false;
@@ -350,7 +414,7 @@ class Parser {
     if (token.type !== TokenType.QuotedStr) {
       return token.literal;
     }
-    const esc = expandEscapes(token.literal);
+    const esc = this.escapeFunc(token.literal);
     if (esc.err !== Result.Success) {
       const msg =
         esc.reason === 'unclosed'
@@ -385,4 +449,7 @@ export {
   Lexer,
   Parser,
   expandEscapes,
+  nullEscape,
+  nevextEscape,
+  jsonEscape,
 };

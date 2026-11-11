@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 
-	nevext "nevext/nevext"
+	"nevext"
 )
 
 // builtin 内置示例：单行注释、裸串与引号串、多行注释、末句省略分号。

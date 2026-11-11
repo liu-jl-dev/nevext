@@ -12,6 +12,7 @@ extends RefCounted
 # 非 ASCII 只在 H04 一处用了字面量（Godot 恒定按 UTF-8 读 .gd）。
 
 const Framework := preload("res://test/test_framework.gd")
+const Nevext := preload("res://nevext/nevext.gd")  # 未注册全局类名，preload 引入
 
 # 每条语料：id / src / pause / ok(是否期望成功) / prog / errs
 #   prog 为 [[行号, [字符串...]], ...]
@@ -40,7 +41,8 @@ static func cases() -> Array:
 	{"id": "B05", "src": "'\"' \"'\"",                "pause": true,  "ok": true,  "prog": [[1, ["\"", "'"]]], "errs": []},
 	{"id": "B06", "src": "\"a\"b",                    "pause": true,  "ok": true,  "prog": [[1, ["a", "b"]]], "errs": []},
 
-	# ---- C 组 转义（只在语法层对 QuotedStr 展开）
+	# ---- C 组 转义（只在语法层对 QuotedStr 展开；v0.4.0 起默认 nevext_escape：
+	# classic 九项 + \uXXXX，对 v0.3.0 及之前向后兼容）
 	{"id": "C01", "src": "\"a\\nb\"",                 "pause": true,  "ok": true,  "prog": [[1, ["a\nb"]]], "errs": []},
 	{"id": "C02", "src": "\"\\n\\r\\t\\v\\b\\f\"",    "pause": true,  "ok": true,  "prog": [[1, ["\n\r\t\v\b\f"]]], "errs": []},
 	{"id": "C03", "src": "\"a\\\\\"",                 "pause": true,  "ok": true,  "prog": [[1, ["a\\"]]], "errs": []},
@@ -51,6 +53,14 @@ static func cases() -> Array:
 	# X1：转义表里没有「反斜杠 + 换行」，串内续行写法最终报非法转义
 	{"id": "C08", "src": "\"a\\\nb\"",                "pause": true,  "ok": false, "prog": [[1, ["a"]]], "errs": [[1, "InvalidEscape"]]},
 	{"id": "C09", "src": "\"x\\ny\\tz\"",             "pause": true,  "ok": true,  "prog": [[1, ["x\ny\tz"]]], "errs": []},
+	# ---- C 组 \u 扩展（v0.4.0；\u 表项与 json.org 语法图 / ECMA-404 一致）
+	# \/ 不在默认表（json_escape 才有）：报错并保留前缀
+	{"id": "C10", "src": "\"a\\/b\"",                 "pause": true,  "ok": false, "prog": [[1, ["a"]]], "errs": [[1, "InvalidEscape"]]},
+	{"id": "C11", "src": "\"\\u4e2d\\u6587\"",        "pause": true,  "ok": true,  "prog": [[1, ["中文"]]], "errs": []},
+	{"id": "C12", "src": "\"\\u4E2D\"",               "pause": true,  "ok": true,  "prog": [[1, ["中"]]], "errs": []},
+	{"id": "C13", "src": "\"a\\ub\"",                 "pause": true,  "ok": false, "prog": [[1, ["a"]]], "errs": [[1, "InvalidEscape"]]},
+	# \' 在默认表合法（Nevext 两种引号串都需要它；json_escape 下才非法）
+	{"id": "C14", "src": "'a\\'b'",                   "pause": true,  "ok": true,  "prog": [[1, ["a'b"]]], "errs": []},
 
 	# ---- D 组 裸串边界（裸串不展开转义）
 	{"id": "D01", "src": "a\\b",                      "pause": true,  "ok": true,  "prog": [[1, ["a\\b"]]], "errs": []},

@@ -145,7 +145,8 @@ namespace NevextTest
             new Case("B05", "'\"' \"'\"", true, true, Prog(St(1, "\"", "'")), Errs()),
             new Case("B06", "\"a\"b", true, true, Prog(St(1, "a", "b")), Errs()),
 
-            // ---- C 组 转义（只在语法层对 QuotedStr 展开）
+            // ---- C 组 转义（只在语法层对 QuotedStr 展开；v0.4.0 起默认 NevextEscape：
+            // classic 九项 + \uXXXX，对 v0.3.0 及之前向后兼容）
             new Case("C01", "\"a\\nb\"", true, true, Prog(St(1, "a\nb")), Errs()),
             new Case(
                 "C02",
@@ -191,6 +192,28 @@ namespace NevextTest
                 Errs(Er(1, "InvalidEscape"))
             ),
             new Case("C09", "\"x\\ny\\tz\"", true, true, Prog(St(1, "x\ny\tz")), Errs()),
+            // ---- C 组 \u 扩展（v0.4.0；\u 表项与 json.org 语法图 / ECMA-404 一致）
+            // \/ 不在默认表（JsonEscape 才有）：报错并保留前缀
+            new Case("C10", "\"a\\/b\"", false, true, Prog(St(1, "a")), Errs(Er(1, "InvalidEscape"))),
+            new Case(
+                "C11",
+                "\"\\u4e2d\\u6587\"",
+                true,
+                true,
+                Prog(St(1, "\u4e2d\u6587")),
+                Errs()
+            ),
+            new Case("C12", "\"\\u4E2D\"", true, true, Prog(St(1, "\u4e2d")), Errs()),
+            new Case(
+                "C13",
+                "\"a\\ub\"",
+                false,
+                true,
+                Prog(St(1, "a")),
+                Errs(Er(1, "InvalidEscape"))
+            ),
+            // \' 在默认表合法（Nevext 两种引号串都需要它；JsonEscape 下才非法）
+            new Case("C14", "'a\\'b'", true, true, Prog(St(1, "a'b")), Errs()),
 
             // ---- D 组 裸串边界（裸串不展开转义）
             new Case("D01", "a\\b", true, true, Prog(St(1, "a\\b")), Errs()),

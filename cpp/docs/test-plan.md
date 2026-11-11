@@ -2,11 +2,11 @@
 
 > 适用范围：`cpp/nevext/nevext.hpp`（单文件，header-only）
 > 测试代码目录：`cpp/test/`
-> **跨实现通用语料不在本文档**：C++ 与 GDScript 共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
+> **跨实现通用语料不在本文档**：C++ 与 GDScript 共用的 60 条语料见 `docs/zh-cn/test-plan.md`，
 > 落地在 `cpp/test/test_conformance.cpp`。本文档只描述 C++ 私有的 LEX / PAR / ERR 套件。
 > **格式化与开发约定不在本文档**：见 [development.md](./development.md)。
 > 文档最后更新：2026-11-01（`common.hpp` / `lexer.hpp` / `parser.hpp` 合并为单文件
-> `nevext.hpp`，用例数与断言数不变：111 用例 / 796 断言通过）
+> 文档最后更新：2026-11-10（v0.4.0：默认转义 nevext_escape（九项 + \uXXXX）与三函数可注入；118 用例 / 832 断言通过）
 
 ## 1. 目标与非目标
 
@@ -104,8 +104,8 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 ./nevext_test.exe
 ```
 
-**当前基线（MinGW GCC 15.2，C++20）**：111 个用例 / 796 条断言全部通过。
-其中 55 个是跨实现通用语料（`Conformance.*`），由 `docs/zh-cn/test-plan.md` 定义。
+**当前基线（MinGW GCC 15.2，C++20）**：118 个用例 / 832 条断言全部通过。
+其中 60 个是跨实现通用语料（`Conformance.*`），由 `docs/zh-cn/test-plan.md` 定义。
 
 ## 5. 需求 → 用例追溯矩阵
 
@@ -170,7 +170,9 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 | PAR-03 | `EmptyStatementsAreDropped` | `;; a ;;; b ;;` | 只保留 `a`、`b` 两条语句 |
 | PAR-04 | `LastStatementWithoutSemicolon` | `a b; c d` | 两条语句，末句无需分号 |
 | PAR-05 | `OnlyCommentsAndWhitespace` | 纯注释 / 纯空白 / 空串 | 空程序 + `Success` + 无错误 |
-| PAR-06 | `AllSupportedEscapes` | 转义表中全部 9 项 | 展开为 9 个目标字符的正确序列 |
+| PAR-06 | `AllNevextEscapes` | 默认转义表全项（`\\ \' \" \n \r \t \v \b \f \u4e2d`，v0.4.0 起） | 全部展开为正确序列（`\u4e2d` 得 `中`） |
+| PAR-06b | `JsonEscapeTableWhenInjected` | 注入 `JsonEscape` 后 `'a\'b'` | `\'` 变非法：报错并保留前缀 `a`（与默认表相反） |
+| PAR-06c | `NullEscapeKeepsEverythingVerbatim` | 注入 `NullEscape` 后 `"a\qb"` | 转义序列原样保留且不报错 |
 | PAR-07 | `RawStringIsNotUnescaped` | `a\nb`（裸串） | 保留字面的 `\` 与 `n` |
 | PAR-08 | `MixedStringKindsInOneStatement` | `'x' y "z";` | 同一语句内三种字符串混用 |
 | PAR-09 | `EmptyQuotedStringBecomesEmptyEntry` | `"" '' x;` | 产出空字符串条目且不丢位 |
@@ -242,3 +244,5 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 4. **结构化模糊测试**：现有 `EveryPrefixTerminates` 只保证「不死循环」，可升级为「随机生成串 → 要么成功解析、要么产出至少一条错误」，用于搜索 D1 一类的静默失败。
 5. **性能基线**：`LongRawTokenIsComplete` / `ManyStatementsAreAllParsed` 目前只做正确性；可改为打印耗时并设阈值，防止后续改动引入退化。
 6. **CI 接入**：GitHub Actions 上加 `cmake -B build && cmake --build build && ctest --output-on-failure`，覆盖 MSVC / GCC / Clang 三套编译器（同时可顺带验证源文件 UTF-8 编码假设是否成立）。
+
+> AI生成

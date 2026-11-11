@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	nevext "nevext/nevext"
+	"nevext"
 )
 
 // GO-01 Lexer.Reset / Parser.Reset 能让实例重用到另一份源码

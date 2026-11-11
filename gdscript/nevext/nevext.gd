@@ -1,7 +1,8 @@
-class_name Nevext # 默认继承 RefCounted
+# 默认继承 RefCounted。不注册 class_name 全局类名，避免占用工程的全局类
+# 命名空间；使用方以 const Nevext := preload("res://<路径>/nevext.gd") 引入。
 
 # 库版本。与 CHANGELOG.md、git tag（v 前缀）同步更新；落点一致性见 tools/check_version.py。
-const VERSION := "0.3.0"
+const VERSION := "0.4.0"
 
 # 行为基准：cpp/nevext 下的 C++ 实现。
 enum TokenType {
@@ -19,20 +20,69 @@ class Result:
 	const OK = 0
 	const Err = 1
 
-const white_chars = { # in 关键字为从 key 中寻找
-	' ':null,',':null,'\t':null,'\v':null,'\r':null,'\n':null,'\f':null,
-}
-# raw 串的额外终止字符，必须与 C++ 版 Lexer::rawStrEndChars 逐项一致。
-const raw_str_end_chars = {
-	';':null,'"':null,"'":null,
-}
-
 ''' 词法分析 '''
 class Lexer:
-	var escape_func:Callable = Nevext.defalt_escape  # 由 Parser 调用，只作用于 QuotedStr
+	var escape_func:Callable = func(s:String) -> Result: return nevext_escape(s)  # 由 Parser 调用，只作用于 QuotedStr；包一层 lambda 让成员初始化处可解析；v0.4.0 起默认 NevextEscape（向后兼容）
 	var code:String
 	var line:int = 1
 	var errors:Array[String] = []      # 与 C++ 的 Lexer::errors 对应
+
+	# ---- 常量与转义实现全部内聚在本类。原先挂在外层类、靠全局类名 Nevext
+	# 从内部类里引用；去掉 class_name 后内部类对外层成员的访问不可靠
+	# （见 gdscript/docs/test-plan.md 踩坑清单），因此整体移入。----
+	const white_chars = { # in 关键字为从 key 中寻找
+		' ':null,',':null,'\t':null,'\v':null,'\r':null,'\n':null,'\f':null,
+	}
+	# raw 串的额外终止字符，必须与 C++ 版 Lexer::rawStrEndChars 逐项一致。
+	const raw_str_end_chars = {
+		';':null,'"':null,"'":null,
+	}
+	# 转义表两套：Nevext 默认表（classic 九项 + \uXXXX，v0.4.0 起）与严格 JSON 表。
+	# JSON 转义表来自 json.org 语法图（与 ECMA-404 一致）：
+	# \" \\ \\/ \b \f \n \r \t \uXXXX（4 位十六进制码点，大小写均可；
+	# 不含 \' 与 \v）。三种转义函数见 Nevext.null_escape / nevext_escape / json_escape。
+	const nevext_escape_map = {
+		"'":"'",'"':'"','\\':'\\',
+		'b':'\b','f':'\f','n':'\n',
+		'r':'\r','t':'\t','v':'\v',
+	}
+	const json_escape_map = {
+		'"':'"','\\':'\\','/':'/',
+		'b':'\b','f':'\f','n':'\n',
+		'r':'\r','t':'\t',
+	}
+	static func null_escape(s:String) -> Result:
+		var res := Result.new(); res.val = s
+		return res
+	static func nevext_escape(s:String) -> Result:
+		return _escape_with(s, nevext_escape_map, true)
+	static func json_escape(s:String) -> Result:
+		return _escape_with(s, json_escape_map, true)
+	static func _escape_with(s:String, escape_map:Dictionary, json_unicode:bool) -> Result:
+		var res:Result = Result.new(); res.val = ''
+		while len(s) > 0:
+			var pos := s.find('\\')
+			if pos < 0: # 没有 \
+				res.val += s
+				break
+			res.val += s.substr(0, pos); s = s.substr(pos)
+			if len(s) < 2:
+				res.err = Result.Err
+				break
+			if json_unicode and s[1] == 'u':
+				# \uXXXX：4 位十六进制码点，产出对应字符
+				if len(s) < 6 or not s.substr(2, 4).is_valid_hex_number():
+					res.err = Result.Err
+					break
+				res.val += String.chr(s.substr(2, 4).hex_to_int())
+				s = s.substr(6)   # 连同 \uXXXX 整体推进 6
+				continue
+			if not (s[1] in escape_map.keys()):
+				res.err = Result.Err
+				break
+			res.val += escape_map[s[1]]
+			s = s.substr(2)   # s 已重新以 '\' 开头，固定推进 2
+		return res
 	func _init(code_:String="") -> void:
 		reset(code_)
 	func reset(code_:String):
@@ -95,7 +145,7 @@ class Lexer:
 		var strlen:int = 0
 		while strlen < len(code):
 			var c:String = code[strlen]
-			if Nevext.white_chars.has(c) or Nevext.raw_str_end_chars.has(c): break
+			if white_chars.has(c) or raw_str_end_chars.has(c): break
 			if c == '/' and strlen + 1 < len(code) and (code[strlen + 1] == '/' or code[strlen + 1] == '*'): break
 			strlen += 1
 		if strlen <= 0:
@@ -106,7 +156,7 @@ class Lexer:
 		return res
 	func _skip_ws():
 		while len(code) > 0:
-			if Nevext.white_chars.has(code[0]):
+			if white_chars.has(code[0]):
 				if code[0] == '\n': line += 1
 				code = code.substr(1)
 			elif _test('//'):
@@ -133,29 +183,17 @@ class Lexer:
 		errors.append('line ' + str(line) + ': ' + msg)
 
 
+# 三个转义入口保留在顶层（snake_case 与其他实现一致）；实现本体在上面 Lexer 里。
+# v0.4.0 起 nevext_escape（原 defalt_escape 的九项表加 \uXXXX）为默认；
+# json_escape 为严格 JSON 表。
 static func null_escape(s:String) -> Result:
-	var res := Result.new(); res.val = s
-	return res
+	return Lexer.null_escape(s)
 
-const escape_map = {
-	"'":"'",'"':'"','\\':'\\',
-	'b':'\b','f':'\f','n':'\n',
-	'r':'\r','t':'\t','v':'\v',
-}
-static func defalt_escape(s:String) -> Result:
-	var res:Result = Result.new(); res.val = ''
-	while len(s) > 0:
-		var pos := s.find('\\')
-		if pos < 0: # 没有 \
-			res.val += s
-			break
-		res.val += s.substr(0, pos); s = s.substr(pos)
-		if len(s) < 2 or not (s[1] in escape_map.keys()):
-			res.err = Result.Err
-			break
-		res.val += escape_map[s[1]]
-		s = s.substr(2)   # s 已重新以 '\' 开头，固定推进 2
-	return res
+static func nevext_escape(s:String) -> Result:
+	return Lexer.nevext_escape(s)
+
+static func json_escape(s:String) -> Result:
+	return Lexer.json_escape(s)
 
 
 ''' 语法分析 '''

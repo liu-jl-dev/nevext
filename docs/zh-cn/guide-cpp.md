@@ -229,6 +229,27 @@ struct Parser {
 
 无论哪种模式，出错前已经解析出的语句都会保留在 `prog` 中。
 
+## 转义函数（可替换）
+
+v0.4.0 起默认转义为 **NevextEscape**（原九项表 `\' \" \\ \n \r \t \v \b \f`
+加 `\uXXXX`，对 v0.3.0 及之前向后兼容：既有转义序列行为不变，只有 `\u`
+从非法变合法；`\u` 表项与 [json.org](https://www.json.org/json-zh.html)
+语法图 / ECMA-404 一致，见[语法概述](./overview.md#转义字符)）。
+三种内置函数与注入点：
+
+```cpp
+Nevext::Lexer lexer(src);
+Nevext::Parser parser(lexer);
+parser.escapeFunc = Nevext::NullEscape;     // 不转义，原样返回
+parser.escapeFunc = Nevext::NevextEscape;   // 默认：九项 + \uXXXX
+parser.escapeFunc = Nevext::JsonEscape;     // 严格 JSON 表（无 \' 与 \v，多 \/）
+```
+
+三种函数签名统一为 `EscapeFunc`：
+`Result (*)(std::u16string_view src, std::u16string& dst, const char** reason)`；
+失败时置 `*reason`（`"unclosed"` / `"invalid"`）且 `dst` 保留已展开前缀，
+`Parser` 负责把 reason 映射为既有错误消息。自定义函数同签名即可。
+
 ## 错误处理
 
 ### 错误分成两个容器
@@ -318,3 +339,5 @@ SetConsoleOutputCP(CP_UTF8);
 ## 许可
 
 本项目使用 MIT 协议，详见仓库根目录的 [LICENSE](../../LICENSE)。
+
+> AI生成

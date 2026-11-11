@@ -29,7 +29,7 @@
 
 local Nevext = {
   -- 库版本。与 CHANGELOG.md、git tag（v 前缀）同步更新；落点一致性见 tools/check_version.py。
-  VERSION = "0.3.0",
+  VERSION = "0.4.0",
 }
 
 -- 错误消息常量，与 C++ 的消息表逐字一致（含句号后的空格）
@@ -70,8 +70,12 @@ local WHITE_BYTES = {
 -- 裸串终止字符集，必须与 C++ 的 rawStrEndChars 逐项一致
 local RAW_END_BYTES = { [BYTE_SEMI] = true, [BYTE_DQUOTE] = true, [BYTE_SQUOTE] = true }
 
--- 转义表，与 C++ 的 Parser::escapeMap 逐项一致（没有「反斜杠 + 换行」续行）
-local ESCAPE_MAP = {
+-- 转义表两套：Nevext 默认表（classic 九项 + \uXXXX，v0.4.0 起）与严格 JSON 表。
+-- JSON 转义表来自 json.org 语法图（与 ECMA-404 一致）：
+-- \" \\ \\/ \b \f \n \r \t \uXXXX（4 位十六进制码点，大小写均可；
+-- 不含 \' 与 \v）。三种转义函数见 Nevext.null_escape / nevext_escape / json_escape；
+-- v0.4.0 起 Parser 默认使用 nevext_escape（对 v0.3.0 及之前向后兼容）。
+local NEVEXT_ESCAPE_MAP = {
   ["\\"] = "\\",
   ["'"] = "'",
   ['"'] = '"',
@@ -81,6 +85,17 @@ local ESCAPE_MAP = {
   ["v"] = "\v",
   ["b"] = "\b",
   ["f"] = "\f",
+}
+
+local JSON_ESCAPE_MAP = {
+  ['"'] = '"',
+  ["\\"] = "\\",
+  ["/"] = "/",
+  ["b"] = "\b",
+  ["f"] = "\f",
+  ["n"] = "\n",
+  ["r"] = "\r",
+  ["t"] = "\t",
 }
 
 -- ------------------------------------------------------------------ 词法分析
@@ -254,10 +269,9 @@ end
 
 -- ------------------------------------------------------------------ 转义展开
 
---- 展开引号串里的转义序列。与 C++ 的 Parser::escape 一致：
+--- 统一展开骨架：返回 (err, val, reason)，reason 为 "unclosed" | "invalid"。
 --- 失败时 val 保留失败点之前已展开的部分。
---- 返回 (err, val, reason)，reason 为 "unclosed" | "invalid"，用于错误消息。
-function Nevext.expand_escapes(src)
+local function escape_with(src, escape_map, json_unicode)
   local out = {}
   local i = 1
   while i <= #src do
@@ -271,14 +285,55 @@ function Nevext.expand_escapes(src)
       -- 输入串末尾是转义字符（正常 token 流里到不了这里，防御性保留）
       return Result.Error, table.concat(out), "unclosed"
     end
-    local mapped = ESCAPE_MAP[src:sub(pos + 1, pos + 1)]
-    if not mapped then
-      return Result.Error, table.concat(out), "invalid"
+    if json_unicode and src:sub(pos + 1, pos + 1) == "u" then
+      local hex4 = src:sub(pos + 2, pos + 5)
+      local cp = tonumber(hex4, 16)
+      if #hex4 ~= 4 or not cp then
+        return Result.Error, table.concat(out), "invalid"
+      end
+      local ok, ch = pcall(utf8.char, cp)
+      if not ok then
+        -- 代理区等 utf8.char 拒绝的码点：按非法转义处理
+        return Result.Error, table.concat(out), "invalid"
+      end
+      out[#out + 1] = ch
+      i = pos + 6
+    else
+      local mapped = escape_map[src:sub(pos + 1, pos + 1)]
+      if not mapped then
+        return Result.Error, table.concat(out), "invalid"
+      end
+      out[#out + 1] = mapped
+      i = pos + 2
     end
-    out[#out + 1] = mapped
-    i = pos + 2
   end
   return Result.Success, table.concat(out), ""
+end
+
+--- 不转义：原样返回（err 恒为 Success）。
+function Nevext.null_escape(src)
+  return Result.Success, src, ""
+end
+
+--- Nevext 默认转义（v0.4.0 起）：classic 九项 + \uXXXX。
+--- 对 v0.3.0 及之前向后兼容：既有转义序列行为不变，只有 \u 从非法变合法。
+--- 失败时 val 保留已展开前缀。
+function Nevext.nevext_escape(src)
+  return escape_with(src, NEVEXT_ESCAPE_MAP, true)
+end
+
+--- 严格 JSON 转义：\" \\ \\/ \b \f \n \r \t \uXXXX
+--- （表来自 json.org 语法图 / ECMA-404；不含 \' 与 \v）。
+--- \uXXXX 按 utf8.char 编码产出；代理区码点 utf8.char 会抛错，
+--- 按非法转义处理（见文档差异登记）。
+function Nevext.json_escape(src)
+  return escape_with(src, JSON_ESCAPE_MAP, true)
+end
+
+--- 展开引号串里的转义序列（历史入口，与 Parser 默认一致；
+--- 即 nevext_escape 的同义词）。
+function Nevext.expand_escapes(src)
+  return Nevext.nevext_escape(src)
 end
 
 -- ------------------------------------------------------------------ 语法分析
@@ -288,15 +343,22 @@ Parser.__index = Parser
 Nevext.Parser = Parser
 
 --- 新建语法分析器并绑定词法器。
-function Parser.new(lexer)
+--- escape_func 可选，默认 Nevext.nevext_escape；可替换为
+--- Nevext.json_escape / Nevext.null_escape 或同签名自定义函数。
+function Parser.new(lexer, escape_func)
   local self = setmetatable({}, Parser)
+  self.escape_func = escape_func or Nevext.nevext_escape
   self:reset(lexer)
   return self
 end
 
 --- 重绑词法器并清空上一轮的错误记录，复用同一对象。
-function Parser:reset(lexer)
+--- escape_func 传 nil 时保持当前转义函数不变。
+function Parser:reset(lexer, escape_func)
   self.lexer = lexer
+  if escape_func ~= nil then
+    self.escape_func = escape_func
+  end
   self.errors = {}
   self._token = nil
   self._failed = false
@@ -363,7 +425,7 @@ function Parser:_to_literal(token)
   if token.type ~= TokenType.QuotedStr then
     return token.literal
   end
-  local err, val, reason = Nevext.expand_escapes(token.literal)
+  local err, val, reason = self.escape_func(token.literal)
   if err ~= Result.Success then
     local msg = reason == "unclosed" and Nevext.UNCLOSED_MESSAGE or Nevext.INVALID_ESCAPE_MESSAGE
     self.errors[#self.errors + 1] = "line " .. tostring(token.line) .. ": " .. msg

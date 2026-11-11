@@ -59,30 +59,65 @@ windowSize 1280, , 720 ,;
 ## 转义字符
 raw_str 不进行转义。
 
-sq_str 与 dq_str 支持的转义字符：
-| 转义字符 | 转义结果 |
-| --- | --- |
-| \\' | ' |
-| \\" | " |
-| \\\ | \ |
-| \\n | 换行符 |
-| \\r | 回车符 |
-| \\t | 制表符 |
-| \\v | 垂直制表符 |
-| \\b | 退格符 |
-| \\f | 换页符 |
+sq_str 与 dq_str 支持的转义字符由**转义函数**决定。八套实现都内置三种转义
+函数（v0.4.0 起默认 `nevext_escape`）：
 
+- `null_escape`：不转义，转义序列原样保留（永不报错）；
+- `nevext_escape`：**默认**，原九项表 + `\uXXXX`；
+- `json_escape`：严格 JSON 表（互操作校验用）。
 
+### Nevext 默认转义（`nevext_escape`）
 
+v0.1 起的九项表，加上 v0.4.0 新增的 `\uXXXX`：
 
+| 转义字符 | 转义结果 | 码点 |
+| --- | --- | --- |
+| \\' | ' | U+0027 |
+| \\" | " | U+0022 |
+| \\\\ | \\ | U+005C |
+| \\n | 换行符 | U+000A |
+| \\r | 回车符 | U+000D |
+| \\t | 制表符 | U+0009 |
+| \\v | 垂直制表符 | U+000B |
+| \\b | 退格符 | U+0008 |
+| \\f | 换页符 | U+000C |
+| \\uXXXX | 十六进制码点 U+XXXX 对应的字符 | 任意（4 位 hex，大小写均可） |
 
+要点：
 
+- **对 v0.3.0 及之前向后兼容**：既有转义序列行为不变，只有 `\u` 从非法
+  变合法。
+- **转义表与引号种类无关**：`\'` 与 `\"` 在单引号串、双引号串里都合法
+  （与 C / Python / JS / Lua 的双引号语言惯例一致）。
+- `\uXXXX` 的表项与 JSON 官网 [json.org](https://www.json.org/json-zh.html)
+  字符串语法图（McKeeman 产生式，标准 ECMA-404）的 `u` 表项一致；`\/`
+  不在默认表（见下）。
+- 不在表内的转义序列（如 `\/`、`\q`）是**非法转义**：报
+  `invalid escape character.` 错误，语句保留已展开的前缀（见各实现的错误
+  恢复语义）。`\u` 后不足 4 位十六进制同样非法。
 
+> `\uXXXX` 的跨实现差异：产出各实现内部表示的对应字符（C++ / JS / C# 为
+> UTF-16 码元，Python / GDScript 为码点，Go / Lua / Rust 按 UTF-8 编码）。
+> **代理区码点（D800–DFFF）**在 C++ / JS / C# / Python 落成代理单元，
+> Go 落成 U+FFFD，Rust / Lua 报非法转义——跨实现对拍请只用非代理码点。
 
+### 严格 JSON 转义（`json_escape`，可选）
 
+注入 `json_escape` 后切换为 JSON 的 escape 产生式（共 9 种）：
 
+```
+escape: '"' '\' '/' 'b' 'f' 'n' 'r' 't' 'u' hex hex hex hex
+```
 
+与默认表的差异：**没有 `\'` 与 `\v`，多出 `\/`**（展开为 `/`）。适合
+「输入必须只含 JSON 合法转义」的互操作校验场景。
 
+### 转义函数的注入
 
+三种函数都可在解析前注入（详见各实现的使用指南与
+[API Reference](./api-reference.md)）：C++ `Parser::escapeFunc`、
+Python `Parser(lexer, escape_func=...)`、Node.js `parser.escapeFunc`、
+C# `parser.EscapeFunc`、Go `parser.EscapeFunc`、Rust `parser.escape_func`、
+Lua `parser.escape_func`、GDScript `lexer.escape_func`。
 
-
+> AI生成

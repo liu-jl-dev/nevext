@@ -2,16 +2,16 @@
 
 > 适用范围：`python/nevext/nevext.py`（Python 3.10+，单文件，零第三方依赖）
 > 测试代码目录：`python/test/`
-> **跨实现通用语料不在本文档**：六套实现共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
+> **跨实现通用语料不在本文档**：六套实现共用的 60 条语料见 `docs/zh-cn/test-plan.md`，
 > 落地在 `python/test/test_conformance.py`。本文档只描述 Python 私有的 `Impl` 套件。
-> 文档最后更新：2026-10-30（初版，60 用例 / 449 断言通过）
+> 文档最后更新：2026-11-10（v0.4.0：默认转义 nevext_escape；65 用例 / 481 断言通过）
 
 ## 1. 目标与非目标
 
 **目标**
 
 1. 用与 C++ / GDScript / JavaScript / C# 相同的口径守住 Python 实现的行为：
-   `Conformance.*` 55 条语料 + dump 门禁（`test_main.py --dump` 与 C++ 侧输出必须
+   `Conformance.*` 60 条语料 + dump 门禁（`test_main.py --dump` 与 C++ 侧输出必须
    逐字节一致）。
 2. 覆盖 Python 侧的工程性关注点：对象复用（reset）、终止性、大输入、码点保真。
 3. 保持零依赖：不用 unittest / pytest，`python test/test_main.py` 一条命令即跑。
@@ -65,7 +65,7 @@
 ## 4. 运行方式
 
 ```bash
-# 全部用例（Conformance 55 条 + Impl 5 条）
+# 全部用例（Conformance 60 条 + Impl 5 条）
 python python/test/test_main.py      # 或 python\test.cmd
 
 # 按名字子串筛选
@@ -77,7 +77,7 @@ diff --strip-trailing-cr \
      <(python python/test/test_main.py --dump)
 ```
 
-**当前基线（CPython 3.13 / 3.14，Windows）**：60 个用例 / 449 条断言全部通过
+**当前基线（CPython 3.13 / 3.14，Windows）**：65 个用例 / 481 条断言全部通过
 （Conformance 55 + Impl 5）。两个版本都实测过。
 
 ## 5. 用例清单：`Impl` 套件（5 个，test_impl.py）
@@ -95,7 +95,7 @@ diff --strip-trailing-cr \
 | 编号 | 现象 | 状态 | 处置 |
 | --- | --- | --- | --- |
 | — | 与其它实现相同的规范缺口（如 X1 续行转义）记录在 `docs/zh-cn/test-plan.md` 第 6 节，此处不重复 | — | — |
-| **PY1** | `show()` 输出的孤立代理项无法用 UTF-8 编码，靠 stdout 的 `backslashreplace` 兜底渲染成 `\udXXX` 文本 | 只影响诊断可读性，不影响断言与 dump（55 条语料不含孤立代理项） | 接受现状；若将来要把代理项写进 dump，需在 `show()` 里显式转义 `\uD800`–`\uDFFF` 并同步 C++ 侧 |
+| **PY1** | `show()` 输出的孤立代理项无法用 UTF-8 编码，靠 stdout 的 `backslashreplace` 兜底渲染成 `\udXXX` 文本 | 只影响诊断可读性，不影响断言与 dump（60 条语料不含孤立代理项） | 接受现状；若将来要把代理项写进 dump，需在 `show()` 里显式转义 `\uD800`–`\uDFFF` 并同步 C++ 侧 |
 
 ## 7. 目录结构
 
@@ -105,7 +105,7 @@ python/
 │   └── nevext.py           # 库本体：单文件、零依赖，拷入任意工程即用
 ├── test/
 │   ├── test_framework.py   # 零依赖自研框架（对齐 cpp/test 的设计取舍）
-│   ├── test_conformance.py # 55 条通用语料 + dump
+│   ├── test_conformance.py # 60 条通用语料 + dump
 │   ├── test_impl.py        # Python 私有的 Impl 套件（5 条）
 │   └── test_main.py        # 入口：--dump / 筛选 / 退出码 / stdout 编码
 ├── test.cmd                # Windows 便捷入口（纯 ASCII 注释）
@@ -114,3 +114,5 @@ python/
 │   └── demo01.py           # 可运行示例
 └── docs/test-plan.md       # 本文档
 ```
+
+> AI生成

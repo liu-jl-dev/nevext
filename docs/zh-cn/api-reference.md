@@ -2,7 +2,7 @@
 
 > 定位：**有什么、叫什么、哪里不同** —— 按类型给出八份实现的成员对照。
 > 怎么用（示例、错误文案、排错）在各实现的 [使用指南](#8-相关文件)；
-> 行为契约（55 条语料、断言约定、双门禁）在
+> 行为契约（60 条语料、断言约定、双门禁）在
 > [跨实现通用测试计划](test-plan.md)，本文不复述语义。
 >
 > 命名只是风格：PascalCase（C++ / C# / Go）、camelCase（Node.js）与
@@ -14,12 +14,12 @@
 | 实现 | 单文件入口 | 访问方式 | 版本常量 |
 | --- | --- | --- | --- |
 | C++ | `cpp/nevext/nevext.hpp`（header-only） | `namespace Nevext` | `Nevext::kVersion`（`string_view`） |
-| GDScript | `gdscript/nevext/nevext.gd` | 全局类 `Nevext`，类型是它的内部类（`Nevext.Lexer`…） | `Nevext.VERSION` |
+| GDScript | `gdscript/nevext/nevext.gd` | `preload` 引入的脚本常量 `Nevext`（v0.4.0 起不注册全局类名），类型是它的内部类（`Nevext.Lexer`…） | `Nevext.VERSION` |
 | Node.js | `nodejs/nevext/nevext.js` | ESM 具名导出（`TokenType` / `Lexer`…） | `VERSION` |
 | C# | `csharp/nevext/Nevext.cs` | `namespace Nevext` | `Nevext.Info.Version` |
 | Python | `python/nevext/nevext.py` | 单模块（`from nevext import Lexer, Parser`） | `__version__` |
 | Lua | `lua/nevext/nevext.lua` | `require("nevext")` → 表 `Nevext` | `Nevext.VERSION` |
-| Go | `go/nevext/nevext.go` | 包 `nevext`（拷走后自建 module 亦可） | `nevext.Version` |
+| Go | `go/nevext.go`（module 根目录，import 只有一层） | 包 `nevext`（拷走后自建 module 亦可） | `nevext.Version` |
 | Rust | `rust/nevext/nevext.rs` | crate 根扁平导出（`nevext::Lexer`…） | `nevext::VERSION` |
 
 ## 1. 枚举与常量
@@ -73,7 +73,7 @@
 | 行号 | 公开字段 `line`（1 起，跨行引号串与被转义的换行都计入） |
 | 错误容器 | 公开字段 `errors`，格式 `line N: msg`；**只收词法错误**（未闭合字符串），语法错误在 `parser.errors` |
 | 输入持有 | C++ `input`（视图）· GDScript `code` · Node.js `input` · Python / Lua / Rust `code` · Go `Code` + `Pos`（游标公开）· Rust `code` + `pos`（公开）；C# 游标与原文私有 |
-| 转义注入 | **仅 GDScript**：字段 `escape_func: Callable`（默认 `Nevext.defalt_escape`，拼写如此、是公开 API 名），由 Parser 调用、只作用于 QuotedStr；其余七套转义表内建（见 §5） |
+| 转义注入 | 八套均可：GDScript 字段 `lexer.escape_func: Callable`（历史位置），其余七套在 Parser 上（C++ `escapeFunc` / Node.js `escapeFunc` / C# `EscapeFunc` / Go `EscapeFunc` / Python `escape_func` / Lua `escape_func` / Rust `escape_func`），默认均为 `nevext_escape`（见 §5） |
 
 ## 4. Parser
 
@@ -89,21 +89,27 @@
 
 ## 5. 转义展开
 
-引号串的转义（`\n` `\t` `\\` `\'` `\"` `\v` `\b` `\f`，没有续行）在**语法层**展开，
-失败时保留失败点之前已展开的部分。除内建路径外，多数实现还提供独立函数：
+引号串的转义在**语法层**展开，失败时保留失败点之前已展开的部分。
+v0.4.0 起默认转义函数为 **`nevext_escape`**（原九项表 `\' \" \\ \n \r \t
+\v \b \f` 加 `\uXXXX`，对 v0.3.0 及之前向后兼容；`\u` 表项与
+[json.org](https://www.json.org/json-zh.html) 字符串语法图 / ECMA-404 一致）。
+三种内置函数与注入方式见[语法概述](overview.md#转义字符)：
 
-| 实现 | 形态 | 返回 |
-| --- | --- | --- |
-| C++ | 无独立函数（`Parser::escape` 私有） | — |
-| GDScript | 注入点 `lexer.escape_func`，默认 `Nevext.defalt_escape(s)`（静态方法） | `Result`（`err` + 展开后 `val`） |
-| Node.js | 导出函数 `expandEscapes(src)` | `{err, val, reason}` |
-| C# | 静态方法 `Lexer.ExpandEscapes(src)` | 元组 `(Result Err, string Val, string Reason)` |
-| Python | 模块函数 `expand_escapes(src)` | `(err, val, reason)` |
-| Lua | `Nevext.expand_escapes(src)` | 三返回值 `(err, val, reason)` |
-| Go | 无独立函数（内联在 Parser） | — |
-| Rust | `expand_escapes(src)` | `(Status, String, &'static str)` |
+| 实现 | 三种函数 | 历史入口 `expandEscapes` | 返回 |
+| --- | --- | --- | --- |
+| C++ | `Nevext::NullEscape / NevextEscape / JsonEscape`（`EscapeFunc` 函数指针，注入点 `Parser::escapeFunc`） | — | `Result` + 出参 `dst` + `reason`（`const char*`） |
+| GDScript | `Nevext.null_escape / nevext_escape / json_escape`（注入点 `lexer.escape_func`） | — | `Result`（`err` + 展开后 `val`） |
+| Node.js | `nullEscape / nevextEscape / jsonEscape`（注入点 `parser.escapeFunc`） | `expandEscapes`（= nevextEscape） | `{err, val, reason}` |
+| C# | `Parser.NullEscape / NevextEscape / JsonEscape`（委托 `EscapeFunc`，注入点 `parser.EscapeFunc`） | `Parser.ExpandEscapes`（= NevextEscape） | 元组 `(Result Err, string Val, string Reason)` |
+| Python | `null_escape / nevext_escape / json_escape`（注入点 `Parser(lexer, escape_func=...)`） | `expand_escapes`（= nevext_escape） | `(err, val, reason)` |
+| Lua | `Nevext.null_escape / nevext_escape / json_escape`（注入点 `parser.escape_func`） | `Nevext.expand_escapes`（= nevext_escape） | 三返回值 `(err, val, reason)` |
+| Go | `NullEscape / NevextEscape / JsonEscape`（类型 `EscapeFunc`，注入点 `parser.EscapeFunc`） | `ExpandEscapes`（= NevextEscape） | `(Result, string, string)` |
+| Rust | `null_escape / nevext_escape / json_escape`（类型 `EscapeFunc`，注入点 `parser.escape_func`） | `expand_escapes`（= nevext_escape） | `(Status, String, &'static str)` |
 
-`reason` 取 `"unclosed"` / `"invalid"` / `""`，供错误消息拼装；`val` 失败时是**部分展开**的结果。
+`reason` 取 `"unclosed"` / `"invalid"` / `""`，供错误消息拼装；`val` 失败时是
+**部分展开**的结果。`json_escape` 与默认表的差异：无 `\'` 与 `\v`，多 `\/`
+（严格 JSON 表，互操作校验用）。`\uXXXX` 的代理区码点行为不一致（C++ / JS /
+C# / Python 落成代理单元、Go 落成 U+FFFD、Rust / Lua 报非法转义），已登记为 D-9。
 
 ## 6. 字符串模型与元素计数
 
@@ -125,7 +131,8 @@
 | D-3 | C++ 的 `ParseProgram` 走出参，其余七套返回 `{err, val}` | 语言使然（参考实现的既有风格），**保留** |
 | D-4 | Rust 的 `Parser` 不绑定词法器，`parse_program(&mut lexer, ...)` 显式传参 | 语言使然（规避自引用生命周期），**保留** |
 | D-5 | GDScript 的 Token 占位文本：EOF 填 `'<EOF>'`、未闭合串填 `'< unclosed string >'`；其余七套为空串 | GDScript 无空值便利，**保留** |
-| D-6 | 转义展开入口不同（§5）：GDScript 可注入、JS/C#/Py/Lua/Rust 有独立函数、C++/Go 只内建 | 语言使然，**保留** |
+| D-6 | 转义注入点位置：GDScript 在 `lexer.escape_func`（v0.1 起的公开 API），其余七套在 Parser（v0.4.0 新增）；三函数名与默认 `nevext_escape` 八套一致 | 历史兼容，**保留** |
+| D-9 | `\uXXXX` 的代理区码点（D800–DFFF）：C++ / JS / C# / Python 落成代理单元，Go 落成 U+FFFD（rune→string 规则），Rust / Lua 报非法转义（char/utf8.char 无法表达） | 字符串模型使然，**保留**；语料不用代理区码点（H02 用真实 emoji 而非 `\u` 序列） |
 | D-7 | 错误消息常量的公开面不同（§1） | 语言使然，**保留** |
 | D-8 | `exception: line N: undefined token type <数值>` 兜底分支只有六套有（GD / JS / C# / Py / Lua / Go），C++ 与 Rust 没有 | 防御代码且不可达（TokenType 五值全部被处理），dump 门禁碰不到；**保留**，新增实现自行取舍 |
 
@@ -135,8 +142,10 @@
 ## 8. 相关文件
 
 - 语法与边界：[语法概述](overview.md)
-- 行为契约：[跨实现通用测试计划](test-plan.md)（55 条语料、断言约定、dump / demo 双门禁）
+- 行为契约：[跨实现通用测试计划](test-plan.md)（60 条语料、断言约定、dump / demo 双门禁）
 - 各实现使用指南：[C++](guide-cpp.md) · [GDScript](guide-gdscript.md) · [Node.js](guide-nodejs.md) ·
   [C#](guide-csharp.md) · [Python](guide-python.md) · [Lua](guide-lua.md) ·
   [Go](guide-go.md) · [Rust](guide-rust.md)
 - 各实现私有测试计划：`<impl>/docs/test-plan.md`（缺口 X2 / LU1 / GO1 / RS1 的详情在其中）
+
+> AI生成

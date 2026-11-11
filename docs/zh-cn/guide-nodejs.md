@@ -1,7 +1,7 @@
 # Nevext JavaScript 使用指南
 
 本指南介绍 JavaScript 实现（Node.js）的集成方式与 API 用法。关于语言本身的语法规则，
-请先阅读[语法概述](./overview.md)；行为与 C++ 参考实现逐条一致，并由 55 条跨实现
+请先阅读[语法概述](./overview.md)；行为与 C++ 参考实现逐条一致，并由 60 条跨实现
 通用语料与 dump 门禁守护（见[跨实现通用测试计划](./test-plan.md)）。
 
 ## 集成
@@ -81,6 +81,25 @@ parser.reset(lexer2);            // 重绑词法器并清空 errors，复用对�
 | `Parser::ParseProgram(prog, p)`（出参） | `parser.parseProgram(p)`（返回值） |
 | `Parser::Reset(lexer)` | `parser.reset(lexer)` |
 
+## 转义函数（可替换）
+
+v0.4.0 起默认转义为 **nevextEscape**（原九项表 + `\uXXXX`，对 v0.3.0 及
+之前向后兼容；`\u` 表项与 [json.org](https://www.json.org/json-zh.html)
+语法图 / ECMA-404 一致，见[语法概述](./overview.md#转义字符)）。
+`parser.escapeFunc` 可替换（构造第二参数亦可）：
+
+```js
+import { Parser, nullEscape, nevextEscape, jsonEscape } from './nevext/nevext.js';
+
+const parser = new Parser(lexer);
+parser.escapeFunc = nullEscape;     // 不转义，原样返回
+parser.escapeFunc = nevextEscape;   // 默认：九项 + \uXXXX
+parser.escapeFunc = jsonEscape;     // 严格 JSON 表（无 \' 与 \v，多 \/）
+```
+
+三种函数签名统一为 `src => ({err, val, reason})`；失败时 `val` 保留已展开
+前缀。历史入口 `expandEscapes(src)` 保留（= `nevextEscape` 的同义词）。
+
 ## 错误处理
 
 与 C++ 完全同构：错误分两个容器，消息文本逐字一致（含句号后的空格）。
@@ -114,3 +133,5 @@ nodejs\demo.cmd [文件]                    # Windows 便捷入口
 - **面向 Node.js**：实现本体是纯 JS（无 Node 专有 API），嵌入浏览器等环境理论上可行
   （ESM 原生可用），但未经本仓库测试守护；
 - 性能介于 C++ 与 GDScript 之间（游标实现，整体 O(n)），大输入请自行评估。
+
+> AI生成

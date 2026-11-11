@@ -1,6 +1,7 @@
 .vs/
 .vscode/
 .workbuddy/
+.temp/
 
 node_modules/
 

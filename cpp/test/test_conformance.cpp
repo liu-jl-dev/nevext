@@ -51,7 +51,8 @@ const std::vector<ConformanceCase>& Cases() {
     {"B05", u"'\"' \"'\"",              true,  true, {St(1, {u"\"", u"'"})},                      {}},
     {"B06", u"\"a\"b",                  true,  true, {St(1, {u"a", u"b"})},                       {}},
 
-    // ---- C 组 转义（只在语法层对 QuotedStr 展开）
+    // ---- C 组 转义（只在语法层对 QuotedStr 展开；v0.4.0 起默认 NevextEscape：
+    // classic 九项 + \uXXXX，对 v0.3.0 及之前向后兼容）
     {"C01", u"\"a\\nb\"",               true,  true, {St(1, {u"a\nb"})},                          {}},
     {"C02", u"\"\\n\\r\\t\\v\\b\\f\"",  true,  true, {St(1, {u"\n\r\t\v\b\f"})},                  {}},
     {"C03", u"\"a\\\\\"",               true,  true, {St(1, {u"a\\"})},                           {}},
@@ -62,6 +63,14 @@ const std::vector<ConformanceCase>& Cases() {
     // X1：转义表里没有「反斜杠 + 换行」，串内续行写法最终报非法转义
     {"C08", u"\"a\\\nb\"",              true,  false, {St(1, {u"a"})},                            {Er(1, "InvalidEscape")}},
     {"C09", u"\"x\\ny\\tz\"",           true,  true, {St(1, {u"x\ny\tz"})},                       {}},
+    // ---- C 组 JSON 扩展（v0.4.0；\u 表项与 json.org 语法图 / ECMA-404 一致）
+    // \/ 不在默认表（json_escape 才有）：报错并保留前缀
+    {"C10", u"\"a\\/b\"",               true,  false, {St(1, {u"a"})},                            {Er(1, "InvalidEscape")}},
+    {"C11", u"\"\\u4e2d\\u6587\"",      true,  true, {St(1, {u"\u4e2d\u6587"})},                  {}},
+    {"C12", u"\"\\u4E2D\"",             true,  true, {St(1, {u"\u4E2D"})},                         {}},
+    {"C13", u"\"a\\ub\"",               true,  false, {St(1, {u"a"})},                            {Er(1, "InvalidEscape")}},
+    // \' 在默认表合法（Nevext 两种引号串都需要它；json_escape 下才非法）
+    {"C14", u"'a\\'b'",                 true,  true, {St(1, {u"a'b"})},                           {}},
 
     // ---- D 组 裸串边界（裸串不展开转义）
     {"D01", u"a\\b",                    true,  true, {St(1, {u"a\\b"})},                          {}},
@@ -253,6 +262,7 @@ CONF(A06) CONF(A07) CONF(A08) CONF(A09) CONF(A10)
 CONF(B01) CONF(B02) CONF(B03) CONF(B04) CONF(B05) CONF(B06)
 CONF(C01) CONF(C02) CONF(C03) CONF(C04) CONF(C05)
 CONF(C06) CONF(C07) CONF(C08) CONF(C09)
+CONF(C10) CONF(C11) CONF(C12) CONF(C13) CONF(C14)
 CONF(D01) CONF(D02) CONF(D03) CONF(D04) CONF(D05)
 CONF(D06) CONF(D07) CONF(D08) CONF(D09) CONF(D10)
 CONF(E01) CONF(E02) CONF(E03) CONF(E04) CONF(E05) CONF(E06)

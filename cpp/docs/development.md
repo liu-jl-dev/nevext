@@ -96,7 +96,7 @@ clang-format -style=file -dump-config | grep Standard
 ### 1.5 唯一的例外：语料表不许排版
 
 `cpp/test/test_conformance.cpp` 第 30~127 行用 `// clang-format off` 与
-`// clang-format on` 圈住。那是 55 条跨实现语料对齐成的表格，需要和
+`// clang-format on` 圈住。那是 60 条跨实现语料对齐成的表格，需要和
 `gdscript/test/test_conformance.gd` 逐条对照，一旦被折行，对照关系就失效了。
 **改这张表时不要删掉这对标记。**
 
@@ -124,7 +124,7 @@ cd cpp && cmake -B build && cmake --build build && ctest -C Debug --output-on-fa
 # cpp/test 下的源文件一起编，详见 cpp/CMakeLists.txt 里的目标定义
 ```
 
-**改动 `cpp/nevext/` 之前先跑 C++ 侧的 Conformance 套件**（55 条跨实现语料）：
+**改动 `cpp/nevext/` 之前先跑 C++ 侧的 Conformance 套件**（60 条跨实现语料）：
 
 ```bash
 ./build/test/nevext_test Conformance

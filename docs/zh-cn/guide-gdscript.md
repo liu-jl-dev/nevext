@@ -13,17 +13,76 @@
 
 ## 集成步骤
 
-Nevext 的 GDScript 实现只有一个文件，`class_name Nevext` 会注册为全局类名，不需要 `preload`。
+Nevext 的 GDScript 实现只有一个文件，**不注册 `class_name` 全局类名**
+（不占用工程的全局命名空间，不会与你工程里的同名类冲突），用 `preload` 引入：
 
-1. 把 `gdscript/nevext/nevext.gd` 复制到你的工程中（例如 `res://nevext/nevext.gd`）；
-2. 等待 Godot 扫描文件系统，或执行「项目 → 工具 → 重新扫描文件系统」；
-3. 直接使用 `Nevext.Lexer`、`Nevext.Parser` 等。
+1. 把 `gdscript/nevext/nevext.gd` 复制到你的工程任意目录（例如 `res://nevext/nevext.gd`）；
+2. 在每个用到它的脚本顶部声明一次：
+   `const Nevext := preload("res://<拷贝路径>/nevext.gd")`；
+3. 之后照旧使用 `Nevext.Lexer`、`Nevext.Parser`、`Nevext.VERSION` 等。
+
+> v0.3.0 及之前靠全局类名直接写 `Nevext.XXX`；升 v0.4.0 只需补一行
+> 上述 `const` 声明，其余写法不变，见[更新日志](../../CHANGELOG.md)。
+
+## 可选集成方式：Autoload 全局单例
+
+Godot 里「注册全局 Node」的机制是 **Autoload 单例**（项目 → 项目设置 →
+全局 → 自动加载）。官方文档明确：Autoload 只接受场景或**继承 `Node` 的脚本**。
+Nevext 本体是 `RefCounted`，直接注册会被引擎拒绝（Godot 4.7.2 headless 实测）：
+
+```
+ERROR: Failed to instantiate an autoload, script 'res://nevext/nevext.gd' does not inherit from 'Node'.
+```
+
+需要的话，可以在**使用方工程内**写一层 `extends Node` 的薄包装再注册
+（建议与库文件解耦，包装放在你自己的工程里）：
+
+```gdscript
+# nevext_service.gd —— 随 Autoload 注册，例如命名为 NevextSvc
+extends Node
+const Nevext := preload("res://<拷贝路径>/nevext.gd")
+```
+
+注册后全局任何脚本可用（Godot 4.7.2 headless 实测通过）：
+
+```gdscript
+var lexer  = NevextSvc.Nevext.Lexer.new(src)
+var parser = NevextSvc.Nevext.Parser.new(lexer)
+var res    = parser.parse_program()
+```
+
+> **注意**：经由 Autoload 节点访问的 `Nevext` 常量是 Variant，上面的变量
+> 必须用 `var` 而不是 `:=`（类型推断会解析失败）。
+
+**本库不推荐 Autoload**：
+
+| 考量 | 说明 |
+| --- | --- |
+| 单例名仍是全局标识符 | Autoload 的名字同样占用工程全局命名空间、同样一份只能一个，与「不用全局类名」的动机相悖 |
+| 引入工程配置依赖 | 要改 `project.godot`，破坏「拷一个文件进工程即可用」的定位 |
+| 单例化没有收益 | 解析库无状态，每次解析应新建 `Lexer` / `Parser`（或调用方显式 `reset` 复用）；官方文档将 Autoload 定位为「跨场景持久信息 / 全局状态」（玩家数据、场景切换服务等），纯函数式解析器不属于这类场景 |
+
+## 加载方式与官方推荐
+
+Godot 官方文档（GDScript reference 的 Classes as resources / Registering
+named classes，与 Singletons (Autoload)）给出的脚本引用机制有四种：
+
+| 方式 | 官方定位 | 用于本库 |
+| --- | --- | --- |
+| `const Nevext := preload("res://...")` | **官方标准做法**：脚本文件即 GDScript 资源，跨脚本使用必须 load / preload；preload 在编译期只解析一次，官方示例即 `const MyClass = preload("myclass.gd")` | ✅ 推荐（本仓库 demo / test 均此写法） |
+| `class_name` 全局类 | 把脚本注册为编辑器全局类型，全工程免 preload | 可选：可在使用方自己的包装脚本上注册；库本体 v0.4.0 起不再注册 |
+| Autoload 单例 | 常驻 root 的 Node 单例，用于跨场景持久状态；仅接受 `Node` 派生脚本 | 本体不可注册；`extends Node` 包装可注册但不推荐，见上一节 |
+| `load()` 运行时加载 | 运行时按路径取资源，返回 Variant | 不推荐：失去静态类型与编译期检查（类型推断坑见 [GDScript 测试计划](../../gdscript/docs/test-plan.md) 第 6 节） |
+
+官方没有单独的「GDScript 库发布指南」；对 Nevext 这类无状态、纯逻辑、
+拷走即用的单文件库，`const + preload` 就是官方文档给出并被社区广泛
+使用的默认集成方式。
 
 ## 环境要求
 
 - Godot 版本：**Godot 4.x**。实测环境为 4.7.2 stable (mono)，`project.godot` 声明 features 为 `4.7`
 - 无第三方依赖，只用引擎内置类型
-- 全局类名 `Nevext` 不能在同一工程内重复注册，同一工程只能放一份 `nevext.gd`
+- 不注册全局类名，各脚本按自己的 `preload` 路径引用；正常放一份 `nevext.gd` 即可（放多份也能各自引用，但属冗余）
 
 ## 目录结构
 
@@ -71,6 +130,8 @@ Windows 下也可直接双击 [`gdscript/test.cmd`](../../gdscript/test.cmd)。
 ```gdscript
 extends SceneTree
 
+const Nevext := preload("res://nevext/nevext.gd")
+
 func _initialize() -> void:
 	var src := '
 	// 单行注释
@@ -112,7 +173,7 @@ statement 2 at line 7:
 
 ## API 参考
 
-所有类型都是 `Nevext` 类的内部类，通过 `Nevext.XXX` 访问。
+所有类型都是库脚本的内部类；`Nevext` 是你 `preload` 得到的脚本常量，通过 `Nevext.XXX` 访问。
 
 版本常量 `Nevext.VERSION` 与 [更新日志](../../CHANGELOG.md)、git tag 同步更新。
 
@@ -143,7 +204,7 @@ class Token:
 	var literal:String      # 未展开转义的原始内容（QuotedStr 会包含 \n 这类转义序列）
 
 class Lexer:
-	var escape_func:Callable = Nevext.defalt_escape   # 由 Parser 调用，只作用于 QuotedStr
+	var escape_func:Callable   # 默认 nevext_escape；由 Parser 调用，只作用于 QuotedStr（可替换，见「转义函数」一节）
 	var code:String
 	var line:int = 1
 	var errors:Array[String] = []
@@ -191,18 +252,25 @@ class Parser:
 无论哪种模式，出错前已经解析出的语句都会保留在 `res.val` 中，且只要出过错
 `res.err` 就是 `Err`（返回值与错误容器不会互相打脸）。
 
-### 自定义转义（C++ 版没有的能力）
+### 转义函数（可替换）
 
-`Lexer.escape_func` 是 `Callable`，默认使用 `Nevext.defalt_escape`。
-设为 `Nevext.null_escape` 可完全关闭转义：
+`Lexer.escape_func` 是 `Callable`，v0.4.0 起默认为 **Nevext 风格**的
+`Nevext.nevext_escape`（原九项表 + `\uXXXX`，对 v0.3.0 及之前向后兼容；
+见[语法概述](./overview.md#转义字符)）。三种内置函数：
 
 ```gdscript
 var lexer := Nevext.Lexer.new(src)
-lexer.escape_func = Nevext.null_escape   # 原样返回，不做转义
+lexer.escape_func = Nevext.null_escape     # 不转义，原样返回
+lexer.escape_func = Nevext.nevext_escape    # 默认：九项 + \uXXXX
+lexer.escape_func = Nevext.json_escape     # 严格 JSON 表（无 \' 与 \v，多 \/）
 ```
 
-实测：`null_escape` 下 `"a\nb"` 得到字面量 `a\nb`（保留反斜杠与 `n`），
-默认函数则得到 `a` + 换行 + `b`。
+> v0.3.0 及之前默认的 `Nevext.defalt_escape`（拼写如此）已更名为
+> `nevext_escape`（顺带新增 `\uXXXX` 支持），见[更新日志](../../CHANGELOG.md)。
+
+实测：`null_escape` 下 `"a\nb"` 得到字面量 `a\nb`（保留反斜杠与 `n`）；
+默认下 `"\u4e2d"` 得到 `中`、`'a\'b'` 得到 `a'b`，而 `\/` 与 `\q` 会报
+`invalid escape character.`。
 
 也可以传入自定义函数，签名需为 `func(s:String) -> Nevext.Result`：
 成功时置 `res.val`，失败时置 `res.err = Nevext.Result.Err`。
@@ -307,9 +375,9 @@ Godot 的输出面板与 `print()` 均为 UTF-8，无需额外设置。
 
 | 陷阱 | 说明 |
 | --- | --- |
-| **类名冲突** | `class_name Nevext` 不能在同一工程注册两次 |
+| **集成方式** | 不注册全局类名；每个使用它的脚本顶部都要 `const Nevext := preload(...)` |
 | **工程无主场景** | 未设 `run/main_scene`，运行时必须显式传脚本路径 |
-| **未扫描会报"Nevext 未声明"** | 全局类注册信息在 `.godot/global_script_class_cache.cfg`；**不要删 `.godot/`**，新检出先让 Godot 扫一次文件系统 |
+| **不依赖 `.godot/` 缓存** | v0.3.0 及之前靠 `global_script_class_cache.cfg` 注册全局类，删了 `.godot/` 就报 "Nevext 未声明"；v0.4.0 起改为 `preload`，无缓存副本实测测试与 demo 照常运行 |
 | **`errors` 需手动清** | 只有 `reset()` 会清空，见「错误处理」一节 |
 | **只见 `Parser.errors` 会漏错** | 未闭合字符串在 `Lexer.errors` 里 |
 | **GDScript 字面量会先转义一次** | 源码写 `\"world\"`，交给 Nevext 时已是 `"world"` |
@@ -343,7 +411,7 @@ gdscript\demo.cmd [文件]
 
 ## 测试
 
-- 跨实现通用语料：`gdscript/test/test_conformance.gd`，55 条，定义见
+- 跨实现通用语料：`gdscript/test/test_conformance.gd`，60 条，定义见
   [docs/zh-cn/test-plan.md](./test-plan.md)
 - GDScript 私有用例：`gdscript/test/test_impl.gd`，覆盖可替换的 `escape_func`、实例复用、
   终止性（病态串的全部前缀）、长裸串、大量语句
@@ -354,3 +422,5 @@ gdscript\demo.cmd [文件]
 ## 许可
 
 本项目使用 MIT 协议，详见仓库根目录的 [LICENSE](../../LICENSE)。
+
+> AI生成

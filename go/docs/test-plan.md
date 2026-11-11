@@ -1,16 +1,16 @@
 # Nevext Go 实现测试计划
 
-> 适用范围：`go/nevext/nevext.go`（Go 1.21+，单文件，零第三方依赖）
+> 适用范围：`go/nevext.go`（Go 1.21+，单文件，零第三方依赖，module 根目录）
 > 测试代码目录：`go/test/`
-> **跨实现通用语料不在本文档**：各实现共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
+> **跨实现通用语料不在本文档**：各实现共用的 60 条语料见 `docs/zh-cn/test-plan.md`，
 > 落地在 `go/test/test_conformance.go`。本文档只描述 Go 私有的 `Impl` 套件。
-> 文档最后更新：2026-11-04（初版，60 用例 / 449 断言通过）
+> 文档最后更新：2026-11-10（v0.4.0：默认转义 nevext_escape；65 用例 / 481 断言通过）
 
 ## 1. 目标与非目标
 
 **目标**
 
-1. 用与其他实现相同的口径守住 Go 实现的行为：`Conformance.*` 55 条语料 +
+1. 用与其他实现相同的口径守住 Go 实现的行为：`Conformance.*` 60 条语料 +
    dump 门禁（`go run ./test --dump` 与 C++ 侧输出必须逐字节一致，diff 加
    `--strip-trailing-cr`）。
 2. 覆盖 Go 侧的工程性关注点：对象复用（Reset）、终止性、长裸串、大输入、
@@ -25,7 +25,7 @@
 
 ## 2. 被测对象与 API 形状
 
-单文件 `nevext/nevext.go`（包名 `nevext`，拷入任意工程即用），公开成员：
+单文件 `nevext.go`（module 根目录，包名 `nevext`，import 只有一层；拷入任意工程即用），公开成员：
 
 | 导出项 | 说明 |
 | --- | --- |
@@ -70,7 +70,7 @@
 ## 4. 运行方式
 
 ```bash
-# 全部用例（Conformance 55 条 + Impl 5 条）
+# 全部用例（Conformance 60 条 + Impl 5 条）
 go\test.cmd                      # 等价于 cd go && go run ./test
 
 # 按名字子串筛选 / dump 门禁
@@ -80,7 +80,7 @@ diff --strip-trailing-cr \
      <(cd go && go run ./test --dump)
 ```
 
-**当前基线（Go 1.27.3，Windows）**：60 个用例 / 449 条断言全部通过
+**当前基线（Go 1.27.3，Windows）**：65 个用例 / 481 条断言全部通过
 （Conformance 55 + Impl 5）。
 
 ## 5. 用例清单：`Impl` 套件（5 个，test_impl.go）
@@ -109,7 +109,7 @@ go/
 │   └── nevext.go            # 库本体：单文件、零依赖，拷入任意工程即用
 ├── test/
 │   ├── test_framework.go    # 零依赖自研框架（对齐 cpp/test 的设计取舍）
-│   ├── test_conformance.go  # 55 条通用语料 + dump
+│   ├── test_conformance.go  # 60 条通用语料 + dump
 │   ├── test_impl.go         # Go 私有的 Impl 套件（5 条）
 │   └── test_main.go         # 入口：--dump / 筛选 / 退出码
 ├── test.cmd                 # Windows 便捷入口（纯 ASCII 注释）
@@ -118,3 +118,5 @@ go/
 │   └── demo01.go            # 可运行示例（八套 demo 同输入同格式）
 └── docs/test-plan.md        # 本文档
 ```
+
+> AI生成

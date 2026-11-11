@@ -63,7 +63,8 @@ CASES = [
     Case("B04", "'a' \"b\" c", True, True, [St(1, "a", "b", "c")], []),
     Case("B05", "'\"' \"'\"", True, True, [St(1, '"', "'")], []),
     Case("B06", '"a"b', True, True, [St(1, "a", "b")], []),
-    # ---- C 组 转义（只在语法层对 QuotedStr 展开）
+    # ---- C 组 转义（只在语法层对 QuotedStr 展开；v0.4.0 起默认 nevext_escape：
+    # classic 九项 + \uXXXX，对 v0.3.0 及之前向后兼容）
     Case("C01", '"a\\nb"', True, True, [St(1, "a\nb")], []),
     Case("C02", '"\\n\\r\\t\\v\\b\\f"', True, True, [St(1, "\n\r\t\v\b\f")], []),
     Case("C03", '"a\\\\"', True, True, [St(1, "a\\")], []),
@@ -74,6 +75,14 @@ CASES = [
     # X1：转义表里没有「反斜杠 + 换行」，串内续行写法最终报非法转义
     Case("C08", '"a\\\nb"', False, True, [St(1, "a")], [Er(1, "InvalidEscape")]),
     Case("C09", '"x\\ny\\tz"', True, True, [St(1, "x\ny\tz")], []),
+    # ---- C 组 \u 扩展（v0.4.0；\u 表项与 json.org 语法图 / ECMA-404 一致）
+    # \/ 不在默认表（json_escape 才有）：报错并保留前缀
+    Case("C10", '"a\\/b"', False, True, [St(1, "a")], [Er(1, "InvalidEscape")]),
+    Case("C11", '"\\u4e2d\\u6587"', True, True, [St(1, "\u4e2d\u6587")], []),
+    Case("C12", '"\\u4E2D"', True, True, [St(1, "\u4e2d")], []),
+    Case("C13", '"a\\ub"', False, True, [St(1, "a")], [Er(1, "InvalidEscape")]),
+    # \' 在默认表合法（Nevext 两种引号串都需要它；json_escape 下才非法）
+    Case("C14", "'a\\'b'", True, True, [St(1, "a'b")], []),
     # ---- D 组 裸串边界（裸串不展开转义）
     Case("D01", "a\\b", True, True, [St(1, "a\\b")], []),
     Case("D02", "a\\nb", True, True, [St(1, "a\\nb")], []),

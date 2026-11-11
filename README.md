@@ -55,7 +55,7 @@ playerName '海上生明月'
 | Go | **可用** | Go 1.21+，零依赖单文件。行为与 C++ 逐条对齐（字节序列扫描，同 Lua 论证），游标式扫描整体 O(n) |
 | Rust | **可用** | Rust 1.70+，零依赖单文件（`Status` 枚举、`Parser` 不绑定词法器）。行为与 C++ 逐条对齐，游标式扫描整体 O(n) |
 
-八套实现跑同一份跨实现语料（55 条），定义见
+八套实现跑同一份跨实现语料（60 条），定义见
 [跨实现通用测试计划](./docs/zh-cn/test-plan.md)；各实现另有私有套件，
 见 [C++ 测试计划](./cpp/docs/test-plan.md)、
 [GDScript 测试计划](./gdscript/docs/test-plan.md)、
@@ -93,14 +93,24 @@ header-only 的单文件，没有 `.lib` / `.dll`，也没有兄弟头文件：�
 
 ### GDScript
 
-把 `gdscript/nevext/nevext.gd` 拷进 Godot 工程即可，脚本首行的
-`class_name Nevext` 会注册为全局类名，无需 `preload`：
+把 `gdscript/nevext/nevext.gd` 拷进 Godot 工程任意目录，用 `preload` 引入。
+脚本不注册 `class_name` 全局类名，不占用工程的全局命名空间，
+也不会与你工程里已有的 `Nevext` 同名类冲突：
 
 ```gdscript
+const Nevext := preload("res://nevext/nevext.gd")   # 路径按实际拷贝位置调整
+
 var lexer  := Nevext.Lexer.new(src)
 var parser := Nevext.Parser.new(lexer)
 var res:Nevext.ParseResult = parser.parse_program()
 ```
+
+v0.3.0 及之前靠全局类名直接写 `Nevext.XXX`；升 v0.4.0 只需在使用脚本
+顶部加一行上述 `const` 声明，其余写法不变。
+
+也可以包装为 Autoload 全局单例使用（本体是 `RefCounted`，需一层
+`extends Node` 薄包装；不推荐），加载方式与官方推荐用法的对照见
+[GDScript 使用指南](./docs/zh-cn/guide-gdscript.md)。
 
 要点：
 
@@ -206,8 +216,9 @@ end
 
 ### Go
 
-零依赖单文件，把 `go/nevext/nevext.go` 拷进工程即可（`go.mod` 只为仓库内
-测试入口存在，拷走时不需要）：
+零依赖单文件，库源码在 module 根目录 `go/nevext.go`（包名 `nevext`，
+import 只有一层，工程布局与 stope-lang 的 Go 侧一致）。拷进工程即可
+（`go.mod` 只为仓库内测试入口存在，拷走时不需要）：
 
 ```go
 lexer := nevext.NewLexer("windowSize 1280, 720;")
@@ -276,7 +287,7 @@ rust\demo.cmd                     # Rust
 
 ## 版本
 
-当前版本 **0.3.0**，遵循[语义化版本](https://semver.org/lang/zh-CN/)：
+当前版本 **0.4.0**，遵循[语义化版本](https://semver.org/lang/zh-CN/)：
 1.0.0 之前语法规范与各实现的公开 API 仍可能调整（升次版本号），破坏性变更
 会在[更新日志](./CHANGELOG.md)标注；1.0.0 起承诺 1.x 内行为与 API 兼容。
 
@@ -375,3 +386,5 @@ diff --strip-trailing-cr \
 ## 开源协议
 
 [MIT](./LICENSE) 协议。Copyright (c) 2026 nevext contributors。
+
+> AI生成

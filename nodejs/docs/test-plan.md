@@ -2,15 +2,15 @@
 
 > 适用范围：`nodejs/nevext/nevext.js`（Node.js，ESM 单文件，零第三方依赖）
 > 测试代码目录：`nodejs/test/`
-> **跨实现通用语料不在本文档**：六套实现共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
+> **跨实现通用语料不在本文档**：六套实现共用的 60 条语料见 `docs/zh-cn/test-plan.md`，
 > 落地在 `nodejs/test/test_conformance.js`。本文档只描述 JS 私有的 `Impl` 套件。
-> 文档最后更新：2026-10-30（初版，60 用例 / 449 断言通过）
+> 文档最后更新：2026-11-10（v0.4.0：默认转义 nevext_escape；65 用例 / 481 断言通过）
 
 ## 1. 目标与非目标
 
 **目标**
 
-1. 用与 C++ / GDScript 相同的口径守住 JS 实现的行为：`Conformance.*` 55 条语料 +
+1. 用与 C++ / GDScript 相同的口径守住 JS 实现的行为：`Conformance.*` 60 条语料 +
    dump 门禁（`node nodejs/test/test_main.js --dump` 与 C++ 侧输出必须逐字节一致）。
 2. 覆盖 JS 侧的工程性关注点：对象复用（reset）、终止性、大输入、码元保真。
 3. 保持零依赖：`node` 一条命令即可运行，`package.json` 不引入任何依赖。
@@ -55,7 +55,7 @@
 ## 4. 运行方式
 
 ```bash
-# 全部用例（Conformance 55 条 + Impl 5 条）
+# 全部用例（Conformance 60 条 + Impl 5 条）
 node nodejs/test/test_main.js          # 或 nodejs\test.cmd / npm test --prefix nodejs
 
 # 按名字子串筛选
@@ -67,7 +67,7 @@ diff --strip-trailing-cr \
      <(node nodejs/test/test_main.js --dump)
 ```
 
-**当前基线（Node v22）**：60 个用例 / 449 条断言全部通过（Conformance 55 + Impl 5）。
+**当前基线（Node v22）**：65 个用例 / 481 条断言全部通过（Conformance 60 + Impl 5）。
 
 ## 5. 用例清单：`Impl` 套件（5 个，test_impl.js）
 
@@ -85,3 +85,5 @@ diff --strip-trailing-cr \
 | --- | --- | --- | --- |
 | — | 与 C++ / GDScript 相同的规范缺口（如 X1 续行转义）记录在 `docs/zh-cn/test-plan.md` 第 6 节，此处不重复 | — | — |
 | ~~J1~~ | 原为「未声明 `"type"`，ESM 只能走默认互操作」；2026-10-30 已改为 ESM（`"type": "module"` + 命名导出），全量测试与 dump 门禁通过后关闭 | 已关闭 | — |
+
+> AI生成

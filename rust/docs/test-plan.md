@@ -2,15 +2,15 @@
 
 > 适用范围：`rust/nevext/nevext.rs`（Rust 1.70+ / edition 2021，单文件，零第三方依赖）
 > 测试代码目录：`rust/test/`
-> **跨实现通用语料不在本文档**：各实现共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
+> **跨实现通用语料不在本文档**：各实现共用的 60 条语料见 `docs/zh-cn/test-plan.md`，
 > 落地在 `rust/test/test_conformance.rs`。本文档只描述 Rust 私有的 `Impl` 套件。
-> 文档最后更新：2026-11-04（初版，60 用例 / 449 断言通过）
+> 文档最后更新：2026-11-10（v0.4.0：默认转义 nevext_escape；65 用例 / 481 断言通过）
 
 ## 1. 目标与非目标
 
 **目标**
 
-1. 用与其他实现相同的口径守住 Rust 实现的行为：`Conformance.*` 55 条语料 +
+1. 用与其他实现相同的口径守住 Rust 实现的行为：`Conformance.*` 60 条语料 +
    dump 门禁（`cargo run --bin nevext_test -- --dump` 与 C++ 侧输出必须逐字节
    一致，diff 加 `--strip-trailing-cr`）。
 2. 覆盖 Rust 侧的工程性关注点：复用（reset）、终止性、长裸串、大输入、
@@ -73,7 +73,7 @@ Lexer 的绑定关系改为调用期传参。除此之外的行为契约与 C++ 
 ## 4. 运行方式
 
 ```bash
-# 全部用例（Conformance 55 条 + Impl 5 条）
+# 全部用例（Conformance 60 条 + Impl 5 条）
 rust\test.cmd                    # 等价于 cd rust && cargo run -q --bin nevext_test
 
 # 按名字子串筛选 / dump 门禁
@@ -83,7 +83,7 @@ diff --strip-trailing-cr \
      <(cd rust && cargo run -q --bin nevext_test -- --dump)
 ```
 
-**当前基线（rustc 1.91.0，Windows）**：60 个用例 / 449 条断言全部通过，
+**当前基线（rustc 1.91.0，Windows）**：65 个用例 / 481 条断言全部通过，
 0 警告（Conformance 55 + Impl 5）。
 
 ## 5. 用例清单：`Impl` 套件（5 个，test_impl.rs）
@@ -113,7 +113,7 @@ rust/
 │   └── nevext.rs            # 库本体：单文件、零依赖，拷入任意工程即用
 ├── test/
 │   ├── test_framework.rs    # 零依赖自研框架（对齐 cpp/test 的设计取舍）
-│   ├── test_conformance.rs  # 55 条通用语料 + dump
+│   ├── test_conformance.rs  # 60 条通用语料 + dump
 │   ├── test_impl.rs         # Rust 私有的 Impl 套件（5 条）
 │   └── test_main.rs         # 入口：--dump / 筛选 / 退出码
 ├── test.cmd                 # Windows 便捷入口（纯 ASCII 注释）
@@ -122,3 +122,5 @@ rust/
 │   └── demo01.rs            # 可运行示例（八套 demo 同输入同格式）
 └── docs/test-plan.md        # 本文档
 ```
+
+> AI生成

@@ -2,15 +2,15 @@
 
 > 适用范围：`csharp/nevext/Nevext.cs`（.NET，C# 单文件，零第三方依赖）
 > 测试代码目录：`csharp/test/`
-> **跨实现通用语料不在本文档**：六套实现共用的 55 条语料见 `docs/zh-cn/test-plan.md`，
+> **跨实现通用语料不在本文档**：六套实现共用的 60 条语料见 `docs/zh-cn/test-plan.md`，
 > 落地在 `csharp/test/TestConformance.cs`。本文档只描述 C# 私有的 `Impl` 套件。
-> 文档最后更新：2026-10-30（初版，60 用例 / 449 断言通过）
+> 文档最后更新：2026-11-10（v0.4.0：默认转义 nevext_escape；65 用例 / 481 断言通过）
 
 ## 1. 目标与非目标
 
 **目标**
 
-1. 用与 C++ / GDScript / JavaScript 相同的口径守住 C# 实现的行为：`Conformance.*` 55 条
+1. 用与 C++ / GDScript / JavaScript 相同的口径守住 C# 实现的行为：`Conformance.*` 60 条
    语料 + dump 门禁（`nevext_test.exe --dump` 与 C++ 侧输出必须逐字节一致）。
 2. 覆盖 C# 侧的工程性关注点：对象复用（Reset）、终止性、大输入、码元保真。
 3. 保持零依赖：单一 csproj、无 NuGet 引用，`dotnet build` 即可编译。
@@ -61,7 +61,7 @@
 ## 4. 运行方式
 
 ```bash
-# 全部用例（Conformance 55 条 + Impl 5 条）
+# 全部用例（Conformance 60 条 + Impl 5 条）
 csharp\test.cmd                       # 构建后直接跑 exe，输出不带构建噪声
 dotnet run --project csharp           # 等价（stdout 会混入构建消息）
 
@@ -74,7 +74,7 @@ diff --strip-trailing-cr \
      <(csharp/bin/Release/net10.0/nevext_test.exe --dump)
 ```
 
-**当前基线（.NET SDK 10.0.401，net10.0，Release）**：60 个用例 / 449 条断言全部通过
+**当前基线（.NET SDK 10.0.401，net10.0，Release）**：65 个用例 / 481 条断言全部通过
 （Conformance 55 + Impl 5）。
 
 ## 5. 用例清单：`Impl` 套件（5 个，TestImpl.cs）
@@ -101,7 +101,7 @@ csharp/
 │   └── Nevext.cs           # 库本体：单文件、零依赖，拷入任意工程即用
 ├── test/
 │   ├── TestFramework.cs    # 零依赖自研框架（对齐 cpp/test 的设计取舍）
-│   ├── TestConformance.cs  # 55 条通用语料 + dump
+│   ├── TestConformance.cs  # 60 条通用语料 + dump
 │   ├── TestImpl.cs         # C# 私有的 Impl 套件（5 条）
 │   └── TestMain.cs         # 入口：--dump / 筛选 / 退出码
 ├── nevext.csproj           # 单一工程：库 + 测试编进一个可执行文件
@@ -113,3 +113,5 @@ csharp/
 ├── .gitignore              # bin/ obj/
 └── docs/test-plan.md       # 本文档
 ```
+
+> AI生成

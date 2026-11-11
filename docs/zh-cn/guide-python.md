@@ -1,7 +1,7 @@
 # Nevext Python 使用指南
 
 本指南介绍 Python 实现（CPython 3.10+）的集成方式与 API 用法。关于语言本身的语法规则，
-请先阅读[语法概述](./overview.md)；行为与 C++ 参考实现逐条一致，并由 55 条跨实现
+请先阅读[语法概述](./overview.md)；行为与 C++ 参考实现逐条一致，并由 60 条跨实现
 通用语料与 dump 门禁守护（见[跨实现通用测试计划](./test-plan.md)）。
 
 ## 集成
@@ -88,6 +88,24 @@ nevext.expand_escapes(src)                       # -> (err, val, reason)
 同一行的多处错误各记一条，不做去重。复用 `Parser` 前请调用 `parser.reset(...)`，
 只有 `reset` 会清空错误容器。
 
+## 转义函数（可替换）
+
+v0.4.0 起默认转义为 **nevext_escape**（原九项表 + `\uXXXX`，对 v0.3.0 及
+之前向后兼容；`\u` 表项与 [json.org](https://www.json.org/json-zh.html)
+语法图 / ECMA-404 一致，见[语法概述](./overview.md#转义字符)）。
+构造时（或 `reset` 时）注入：
+
+```python
+from nevext import Parser, null_escape, nevext_escape, json_escape
+
+parser = Parser(lexer)                                # 默认 nevext_escape
+parser = Parser(lexer, escape_func=null_escape)       # 不转义，原样返回
+parser = Parser(lexer, escape_func=json_escape)       # 严格 JSON 表（无 \' 与 \v，多 \/）
+```
+
+三种函数签名统一为 `src -> (err, val, reason)`；失败时 `val` 保留已展开
+前缀。历史入口 `expand_escapes(src)` 保留（= `nevext_escape` 的同义词）。
+
 ## 与其它实现的差异
 
 | 项 | C++ | JavaScript | C# | Python |
@@ -123,3 +141,5 @@ python\demo.cmd [文件]                      # Windows 便捷入口
 - 输出非 BMP 字符到终端时需保证 stdout 是 UTF-8（`test_main.py` 已经显式设置）；
   孤立代理项无法编码为 UTF-8，只能用 `errors="backslashreplace"` 之类的方式降级；
 - 性能介于 C++ 与 GDScript 之间（游标实现，整体 O(n)），大输入请自行评估。
+
+> AI生成

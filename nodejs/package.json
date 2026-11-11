@@ -1,6 +1,6 @@
 {
   "name": "nevext",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Nevext 数据描述语言的 JavaScript 实现（行为对齐 cpp/nevext 参考实现）",
   "type": "module",
   "main": "nevext/nevext.js",

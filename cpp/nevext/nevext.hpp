@@ -44,7 +44,7 @@ namespace Nevext {
 
 // 库版本。与根目录 CHANGELOG.md、git tag（v 前缀）同步更新；全部落点的
 // 一致性由 tools/check_version.py 守护。
-inline constexpr std::string_view kVersion = "0.3.0";
+inline constexpr std::string_view kVersion = "0.4.0";
 
 // ---------------------------------------------------------------------------
 // 类型
@@ -230,6 +230,111 @@ struct Lexer {
 };
 
 // ---------------------------------------------------------------------------
+// 转义函数（三种，可通过 Parser::escapeFunc 替换；v0.4.0 起默认 NevextEscape）
+//
+//   NullEscape     不做任何转义，原样返回
+//   NevextEscape   **默认**：classic 九项表（\' \" \\ \n \r \t \v \b \f）
+//                  加 \uXXXX（v0.4.0 新增，对 v0.3.0 及之前向后兼容：
+//                  既有转义序列行为不变，只有 \u 从非法变合法）
+//   JsonEscape     严格 JSON 表：\" \\ \\/ \b \f \n \r \t \uXXXX
+//                  （表来自 json.org 语法图，与 ECMA-404 一致；不含 \' 与 \v，
+//                  供 JSON 互操作校验场景使用）
+//
+// 统一签名：把 src 里的转义序列展开写入 dst。失败时置 *reason（取值
+// "unclosed" / "invalid"）并返回 Error；dst 保留已展开前缀（与 Parser 的
+// 错误恢复语义一致，调用方负责把 reason 映射为错误消息）。
+// \uXXXX 产出 UTF-16 码元；代理区码点按原码元落盘，跨实现对拍时
+// 请只用非代理码点（Rust / Lua 等按 UTF-8 编码的实现不接受代理，见
+// docs/zh-cn/api-reference.md 差异登记）。
+// ---------------------------------------------------------------------------
+
+using EscapeFunc = Result (*)(std::u16string_view src, std::u16string& dst,
+                              const char** reason);
+
+inline Result NullEscape(std::u16string_view src, std::u16string& dst,
+                         const char** reason) {
+  (void)reason;  // 永不失败
+  dst.clear();
+  dst.append(src.data(), src.size());
+  return Result::Success;
+}
+
+namespace detail {
+inline char16_t HexValue(char16_t c) {
+  if (c >= u'0' && c <= u'9') return c - u'0';
+  if (c >= u'a' && c <= u'f') return c - u'a' + 10;
+  if (c >= u'A' && c <= u'F') return c - u'A' + 10;
+  return 0xFFFF;  // 非法十六进制位
+}
+
+// 统一展开骨架：表项查 map，两者都支持 \uXXXX。
+inline Result EscapeWith(std::u16string_view src, std::u16string& dst,
+                         const char** reason,
+                         const std::map<char16_t, char16_t>& kMap) {
+  dst.clear();
+  for (;;) {
+    size_t pos = src.find(u'\\');
+    if (pos == std::u16string_view::npos) {  // 没有转义字符了
+      dst.append(src.data(), src.size());
+      break;
+    }
+    dst.append(src.data(), pos);
+    src.remove_prefix(pos + 1);
+    if (src.size() == 0) {  // 输入串末尾是转义字符
+      *reason = "unclosed";
+      return Result::Error;
+    }
+    if (src[0] == u'u') {  // \uXXXX：4 位十六进制码点（大小写均可）
+      if (src.size() < 5) {
+        *reason = "invalid";
+        return Result::Error;
+      }
+      char16_t cp = 0;
+      for (int i = 1; i <= 4; ++i) {
+        char16_t h = HexValue(src[i]);
+        if (h == 0xFFFF) {
+          *reason = "invalid";
+          return Result::Error;
+        }
+        cp = static_cast<char16_t>(cp * 16 + h);
+      }
+      dst.push_back(cp);
+      src.remove_prefix(5);
+      continue;
+    }
+    auto it = kMap.find(src[0]);
+    if (it == kMap.end()) {  // 未定义转义
+      *reason = "invalid";
+      return Result::Error;
+    }
+    dst.push_back(it->second);
+    src.remove_prefix(1);
+  }
+  return Result::Success;
+}
+}  // namespace detail
+
+inline Result NevextEscape(std::u16string_view src, std::u16string& dst,
+                           const char** reason) {
+  static const std::map<char16_t, char16_t> kMap{
+      {u'\\', u'\\'}, {u'\'', u'\''}, {u'"', u'"'},
+      {u'n', u'\n'},  {u'r', u'\r'},  {u't', u'\t'},
+      {u'v', u'\v'},  {u'b', u'\b'},  {u'f', u'\f'},
+  };
+  return detail::EscapeWith(src, dst, reason, kMap);
+}
+
+inline Result JsonEscape(std::u16string_view src, std::u16string& dst,
+                         const char** reason) {
+  static const std::map<char16_t, char16_t> kMap{
+      {u'"', u'"'},  {u'\\', u'\\'}, {u'/', u'/'},
+      {u'b', u'\b'}, {u'f', u'\f'}, {u'n', u'\n'},
+      {u'r', u'\r'}, {u't', u'\t'},
+  };
+  return detail::EscapeWith(src, dst, reason, kMap);
+}
+
+// ---------------------------------------------------------------------------
 // 语法
 // ---------------------------------------------------------------------------
 
@@ -237,6 +342,11 @@ struct Parser {
   Lexer* lexer;
   Token curToken;
   std::vector<std::string> errors;
+  // 转义函数（公开可替换，默认 NevextEscape：classic 九项 + \uXXXX）。
+  // reason 到错误消息的映射（unclosed→unclosed string literal /
+  // invalid→invalid escape character）由 Parser 内部完成，与三种内置函数
+  // 配套使用；自定义函数同样只需返回 reason，不必自己拼接行号前缀。
+  EscapeFunc escapeFunc = NevextEscape;
   Parser(Lexer& lexer) { Reset(lexer); }
   // 复用同一对象解析新的输入：重绑词法器并清空上一轮的错误记录
   // （与 GDScript 实现的 Parser.reset 对应）。curToken 无需手动还原——
@@ -299,33 +409,14 @@ struct Parser {
     }
     return result;
   }
-  inline static const std::map<char16_t, char16_t> escapeMap{
-      {u'\\', u'\\'}, {u'\'', u'\''}, {u'"', u'"'},
-      {u'n', u'\n'},  {u'r', u'\r'},  {u't', u'\t'},
-      {u'v', u'\v'},  {u'b', u'\b'},  {u'f', u'\f'},
-  };
   Result escape(std::u16string_view src, std::u16string& dst) {
-    dst.clear();
-    for (;;) {
-      size_t pos = src.find(u'\\');
-      if (pos == std::u16string_view::npos) {  // 没有转义字符了
-        dst.append(src.data(), src.size());
-        break;
-      }
-      dst.append(src.data(), pos);
-      src.remove_prefix(pos + 1);
-      if (src.size() == 0) {  // 输入串末尾是转义字符
-        error("unclosed string literal. ");
-        return Result::Error;
-      }
-      if (escapeMap.find(src[0]) == escapeMap.end()) {  // 未定义转义
-        error("invalid escape character. ");
-        return Result::Error;
-      }
-      dst.push_back(escapeMap.at(src[0]));
-      src.remove_prefix(1);
+    const char* reason = "invalid";
+    Result r = escapeFunc(src, dst, &reason);
+    if (r != Result::Success) {
+      error(std::string_view(reason) == "unclosed" ? "unclosed string literal. "
+                                                   : "invalid escape character. ");
     }
-    return Result::Success;
+    return r;
   }
   void error(const char* msg) {
     std::stringstream ss;

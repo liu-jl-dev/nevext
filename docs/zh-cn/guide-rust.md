@@ -2,7 +2,7 @@
 
 本指南介绍 Rust 实现（Rust 1.70+，edition 2021）的集成方式与 API 用法。关于
 语言本身的语法规则，请先阅读[语法概述](./overview.md)；行为与 C++ 参考实现
-逐条一致，并由 55 条跨实现通用语料与 dump 门禁守护（见
+逐条一致，并由 60 条跨实现通用语料与 dump 门禁守护（见
 [跨实现通用测试计划](./test-plan.md)）。
 
 ## 集成
@@ -104,6 +104,25 @@ nevext::expand_escapes(src)                          // -> (err, val, reason)
 同一行的多处错误各记一条，不做去重。复用 `Parser` 前请调用 `parser.reset()`，
 只有 `reset` 会清空错误容器。
 
+## 转义函数（可替换）
+
+v0.4.0 起默认转义为 **nevext_escape**（原九项表 + `\uXXXX`，对 v0.3.0 及
+之前向后兼容；`\u` 表项与 [json.org](https://www.json.org/json-zh.html)
+语法图 / ECMA-404 一致，见[语法概述](./overview.md#转义字符)）。
+`parser.escape_func`（类型 `EscapeFunc`）或 `Parser::with_escape` 注入：
+
+```rust
+use nevext::{Parser, null_escape, nevext_escape, json_escape};
+
+let mut parser = Parser::new();                       // 默认 nevext_escape
+let mut parser = Parser::with_escape(null_escape);    // 不转义，原样返回
+let mut parser = Parser::with_escape(json_escape);    // 严格 JSON 表（无 \' 与 \v，多 \/）
+```
+
+三种函数签名统一为 `fn(&str) -> (Status, String, &'static str)`；失败时
+val 保留已展开前缀。历史入口 `expand_escapes(src)` 保留（= `nevext_escape`
+的同义词）。
+
 ## 与其它实现的差异
 
 | 项 | C++ | JavaScript | C# | Python | Lua | Rust |
@@ -140,3 +159,5 @@ rust\demo.cmd [文件]                # Windows 便捷入口（任意 cwd）
   表达——Python 的 str 允许孤立代理项、Go 的 string 允许任意字节，Rust 做不到；
   输入保证为合法 UTF-8 时行为与其他实现一致；
 - 性能与 C++ 相比有常数级差距（游标实现，整体 O(n)），大输入请自行评估。
+
+> AI生成

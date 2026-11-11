@@ -32,7 +32,7 @@ namespace Nevext
     public static class Info
     {
         /// <summary>库版本。与 CHANGELOG.md、git tag（v 前缀）同步更新；落点一致性见 tools/check_version.py。</summary>
-        public const string Version = "0.3.0";
+        public const string Version = "0.4.0";
     }
 
     /// <summary>词法单元类型。取值与 C++ 的 TokenType 枚举逐项对应（0 起）。</summary>
@@ -309,17 +309,31 @@ namespace Nevext
         }
     }
 
+    /// <summary>
+    /// 转义函数签名：返回 (Err, Val, Reason)。失败时 Val 保留已展开前缀，
+    /// Reason 为 "unclosed" | "invalid"。三个内置实现见
+    /// Parser.NullEscape / Parser.NevextEscape / Parser.JsonEscape。
+    /// </summary>
+    public delegate (Result Err, string Val, string Reason) EscapeFunc(string src);
+
     /// <summary>语法分析器。</summary>
     public sealed class Parser
     {
         public Lexer Lexer { get; private set; }
         public List<string> Errors { get; private set; } = new List<string>();
 
+        /// <summary>
+        /// 转义函数（默认 NevextEscape：classic 九项 + \uXXXX，v0.4.0 起）。可替换为
+        /// JsonEscape / NullEscape 或同签名自定义委托。
+        /// </summary>
+        public EscapeFunc EscapeFunc = NevextEscape;
+
         private Token _token;
         private bool _failed;
 
-        // 转义表，与 C++ 的 Parser::escapeMap 逐项一致（没有「反斜杠 + 换行」续行）
-        private static readonly Dictionary<char, char> EscapeMap =
+        // 转义表两套：Nevext 默认表（classic 九项 + \uXXXX，v0.4.0 起）与严格 JSON 表。
+        // JSON 表来自 json.org 语法图（与 ECMA-404 一致）。见 JsonEscape。
+        private static readonly Dictionary<char, char> NevextMap =
             new Dictionary<char, char>
             {
                 { '\\', '\\' },
@@ -331,6 +345,19 @@ namespace Nevext
                 { 'v', '\v' },
                 { 'b', '\b' },
                 { 'f', '\f' },
+            };
+
+        private static readonly Dictionary<char, char> JsonMap =
+            new Dictionary<char, char>
+            {
+                { '"', '"' },
+                { '\\', '\\' },
+                { '/', '/' },
+                { 'b', '\b' },
+                { 'f', '\f' },
+                { 'n', '\n' },
+                { 'r', '\r' },
+                { 't', '\t' },
             };
 
         public Parser(Lexer lexer)
@@ -391,12 +418,32 @@ namespace Nevext
             return result;
         }
 
+        /// <summary>不转义：原样返回（Err 恒为 Success）。</summary>
+        public static (Result Err, string Val, string Reason) NullEscape(string src)
+        {
+            return (Result.Success, src, "");
+        }
+
+        /// <summary>Nevext 默认转义（v0.4.0 起）：classic 九项 + \uXXXX。
+        /// 对 v0.3.0 及之前向后兼容：既有转义序列行为不变，只有 \u 从非法变合法。
+        /// 失败时 Val 保留已展开前缀。</summary>
+        public static (Result Err, string Val, string Reason) NevextEscape(string src)
+        {
+            return EscapeWith(src, NevextMap, true);
+        }
+
         /// <summary>
-        /// 展开引号串里的转义序列。与 C++ 的 Parser::escape 一致：
-        /// 失败时 Val 保留失败点之前已展开的部分。
-        /// Reason 为 "unclosed" | "invalid"，用于错误消息。
+        /// 严格 JSON 转义：\" \\\\ \\/ \b \f \n \r \t \uXXXX
+        /// （转义表来自 json.org 语法图 / ECMA-404；不含 \' 与 \v）；\uXXXX 产出
+        /// UTF-16 码元，代理区码点按原码元落盘（见文档差异登记）。
         /// </summary>
-        public static (Result Err, string Val, string Reason) ExpandEscapes(string src)
+        public static (Result Err, string Val, string Reason) JsonEscape(string src)
+        {
+            return EscapeWith(src, JsonMap, true);
+        }
+
+        private static (Result Err, string Val, string Reason) EscapeWith(
+            string src, Dictionary<char, char> map, bool jsonUnicode)
         {
             var sb = new System.Text.StringBuilder();
             int i = 0;
@@ -415,7 +462,32 @@ namespace Nevext
                     return (Result.Error, sb.ToString(), "unclosed");
                 }
                 char c = src[pos + 1];
-                if (!EscapeMap.TryGetValue(c, out char mapped))
+                if (jsonUnicode && c == 'u')
+                {
+                    if (pos + 6 > src.Length)
+                    {
+                        return (Result.Error, sb.ToString(), "invalid");
+                    }
+                    int cp = 0;
+                    for (int k = 1; k <= 4; k++)
+                    {
+                        int h = src[pos + 1 + k];
+                        int v =
+                            (h >= '0' && h <= '9') ? h - '0'
+                            : (h >= 'a' && h <= 'f') ? h - 'a' + 10
+                            : (h >= 'A' && h <= 'F') ? h - 'A' + 10
+                            : -1;
+                        if (v < 0)
+                        {
+                            return (Result.Error, sb.ToString(), "invalid");
+                        }
+                        cp = cp * 16 + v;
+                    }
+                    sb.Append((char)cp);
+                    i = pos + 6;
+                    continue;
+                }
+                if (!map.TryGetValue(c, out char mapped))
                 {
                     return (Result.Error, sb.ToString(), "invalid");
                 }
@@ -423,6 +495,15 @@ namespace Nevext
                 i = pos + 2;
             }
             return (Result.Success, sb.ToString(), "");
+        }
+
+        /// <summary>
+        /// 展开引号串里的转义序列（历史入口，与 Parser 默认一致；
+        /// 即 NevextEscape 的同义词）。
+        /// </summary>
+        public static (Result Err, string Val, string Reason) ExpandEscapes(string src)
+        {
+            return NevextEscape(src);
         }
 
         // ------------------------------------------------------------- 私有方法
@@ -466,7 +547,7 @@ namespace Nevext
             {
                 return token.Literal;
             }
-            var esc = ExpandEscapes(token.Literal);
+            var esc = EscapeFunc(token.Literal);
             if (esc.Err != Result.Success)
             {
                 string msg =

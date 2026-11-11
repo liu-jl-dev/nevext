@@ -1,7 +1,7 @@
 # Nevext C# 使用指南
 
 本指南介绍 C# 实现（.NET）的集成方式与 API 用法。关于语言本身的语法规则，
-请先阅读[语法概述](./overview.md)；行为与 C++ 参考实现逐条一致，并由 55 条跨实现
+请先阅读[语法概述](./overview.md)；行为与 C++ 参考实现逐条一致，并由 60 条跨实现
 通用语料与 dump 门禁守护（见[跨实现通用测试计划](./test-plan.md)）。
 
 ## 集成
@@ -93,6 +93,24 @@ public static (Result Err, string Val, string Reason) ExpandEscapes(string src);
 同一行的多处错误各记一条，不做去重。复用 `Parser` 前请调用 `parser.Reset(...)`，
 只有 `Reset` 会清空错误容器。
 
+## 转义函数（可替换）
+
+v0.4.0 起默认转义为 **NevextEscape**（原九项表 + `\uXXXX`，对 v0.3.0 及
+之前向后兼容；`\u` 表项与 [json.org](https://www.json.org/json-zh.html)
+语法图 / ECMA-404 一致，见[语法概述](./overview.md#转义字符)）。
+`parser.EscapeFunc`（`EscapeFunc` 委托）可替换：
+
+```csharp
+var parser = new Parser(lexer);
+parser.EscapeFunc = Parser.NullEscape;     // 不转义，原样返回
+parser.EscapeFunc = Parser.NevextEscape;   // 默认：九项 + \uXXXX
+parser.EscapeFunc = Parser.JsonEscape;     // 严格 JSON 表（无 \' 与 \v，多 \/）
+```
+
+三种函数签名统一为 `string -> (Result Err, string Val, string Reason)`；
+失败时 `Val` 保留已展开前缀。历史入口 `Parser.ExpandEscapes(src)` 保留
+（= `NevextEscape` 的同义词）。
+
 ## 与 C++ / JavaScript 实现的差异
 
 | 项 | C++ | JavaScript | C# |
@@ -126,3 +144,5 @@ csharp\demo.cmd [文件]                             # Windows 便捷入口
 - **.NET 系运行时**：实现本体只用基础 BCL API，Unity / Mono 理论上可直接内嵌，
   但未经本仓库测试守护；
 - 性能介于 C++ 与 GDScript 之间（游标实现，整体 O(n)），大输入请自行评估。
+
+> AI生成

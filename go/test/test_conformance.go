@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	nevext "nevext/nevext"
+	"nevext"
 )
 
 // ------------------------------------------------------------------ 期望值表
@@ -67,7 +67,8 @@ var cases = []caseSpec{
 	{"B04", "'a' \"b\" c", true, true, []stmtSpec{st(1, "a", "b", "c")}, nil},
 	{"B05", "'\"' \"'\"", true, true, []stmtSpec{st(1, "\"", "'")}, nil},
 	{"B06", "\"a\"b", true, true, []stmtSpec{st(1, "a", "b")}, nil},
-	// ---- C 组 转义（只在语法层对 QuotedStr 展开）
+	// ---- C 组 转义（只在语法层对 QuotedStr 展开；v0.4.0 起默认 NevextEscape：
+	// classic 九项 + \uXXXX，对 v0.3.0 及之前向后兼容）
 	{"C01", "\"a\\nb\"", true, true, []stmtSpec{st(1, "a\nb")}, nil},
 	{"C02", "\"\\n\\r\\t\\v\\b\\f\"", true, true, []stmtSpec{st(1, "\n\r\t\v\b\f")}, nil},
 	{"C03", "\"a\\\\\"", true, true, []stmtSpec{st(1, "a\\")}, nil},
@@ -78,6 +79,14 @@ var cases = []caseSpec{
 	// X1：转义表里没有「反斜杠 + 换行」，串内续行写法最终报非法转义
 	{"C08", "\"a\\\nb\"", false, true, []stmtSpec{st(1, "a")}, []errSpec{er(1, "InvalidEscape")}},
 	{"C09", "\"x\\ny\\tz\"", true, true, []stmtSpec{st(1, "x\ny\tz")}, nil},
+	// ---- C 组 \u 扩展（v0.4.0；\u 表项与 json.org 语法图 / ECMA-404 一致）
+	// \/ 不在默认表（JsonEscape 才有）：报错并保留前缀
+	{"C10", "\"a\\/b\"", false, true, []stmtSpec{st(1, "a")}, []errSpec{er(1, "InvalidEscape")}},
+	{"C11", "\"\\u4e2d\\u6587\"", true, true, []stmtSpec{st(1, "\u4e2d\u6587")}, nil},
+	{"C12", "\"\\u4E2D\"", true, true, []stmtSpec{st(1, "\u4e2d")}, nil},
+	{"C13", "\"a\\ub\"", false, true, []stmtSpec{st(1, "a")}, []errSpec{er(1, "InvalidEscape")}},
+	// \' 在默认表合法（Nevext 两种引号串都需要它；JsonEscape 下才非法）
+	{"C14", "'a\\'b'", true, true, []stmtSpec{st(1, "a'b")}, nil},
 	// ---- D 组 裸串边界（裸串不展开转义）
 	{"D01", "a\\b", true, true, []stmtSpec{st(1, "a\\b")}, nil},
 	{"D02", "a\\nb", true, true, []stmtSpec{st(1, "a\\nb")}, nil},
