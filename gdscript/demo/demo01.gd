@@ -21,8 +21,7 @@ extends SceneTree
 const Nevext := preload("res://nevext/nevext.gd")
 
 # 内置示例：单行注释、裸串与引号串、多行注释、末句省略分号。
-const BUILTIN := '''
-// 单行注释\n  hello "world";
+const BUILTIN := '''// 单行注释\n  hello "world";
 /*
     多行注释
 */
