@@ -1,6 +1,6 @@
 # Nevext 跨实现通用测试计划
 
-> 适用范围：`cpp/nevext/`（C++20，header-only）、`gdscript/nevext/`（Godot 4.x GDScript）、
+> 适用范围：`cpp/nevext/`（C++17，header-only）、`gdscript/nevext/`（Godot 4.x GDScript）、
 > `nodejs/nevext/`（Node.js，ESM 单文件）、`csharp/nevext/`（.NET，C# 单文件）、
 > `python/nevext/`（Python 3.10+，单文件）、`lua/nevext/`（Lua 5.4+，单文件）、
 > `go/nevext/`（Go 1.21+，单文件）与 `rust/nevext/`（Rust 1.70+，单文件）

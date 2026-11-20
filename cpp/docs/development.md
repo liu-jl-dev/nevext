@@ -72,7 +72,7 @@
 | `PointerAlignment` | `Left` | `char16_t* p`，贴在类型一侧 |
 | `SortIncludes` | `false` | 保留手工分组（先系统头、后项目头）。库合并成单文件后，`nevext.hpp` 里的标准库头本就按字典序排列，这一项设为 `false` 只是不再冒「被自动重排」的风险 |
 | `IncludeBlocks` | `Preserve` | 保留手工分组的空行 |
-| `Standard` | `c++20` | 见下一节 |
+| `Standard` | `c++20` | 见下一节（仅影响格式化器，不是编译门槛） |
 
 一句话概括这套配置的来历：**它是照着 `cpp/nevext/nevext.hpp` 现有风格反过来提炼的，
 不是拿某个现成风格去套。** 判据就是按它格式化核心库得到 0 行差异。
@@ -142,7 +142,7 @@ cd cpp && cmake -B build && cmake --build build && ctest -C Debug --output-on-fa
 
 ## 4. 代码约定（clang-format 管不到的部分）
 
-- **语言与形态**：C++20，全部 header-only，命名空间统一 `Nevext`。
+- **语言与形态**：C++17，全部 header-only，命名空间统一 `Nevext`。
 - **字符串**：内部统一 `std::u16string` / `std::u16string_view`（UTF-16），
   只在对外输出时转 `std::string`（UTF-8）。
 - **命名**：类型 PascalCase（`Token` / `Lexer` / `Parser` / `Statement`），

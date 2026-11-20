@@ -1,6 +1,6 @@
 #pragma once
 //
-// utf.hpp —— UTF-8 / UTF-16 字符串互转（header-only，C++20）
+// utf.hpp —— UTF-8 / UTF-16 字符串互转（header-only，C++17）
 //
 // ⚠ 本文件由 LLM 生成（2026-10-13），未经大规模生产环境验证，
 //   合入前请自行审阅，尤其是错误恢复策略是否符合你的业务预期。
@@ -250,21 +250,6 @@ inline bool Utf8ToUtf16(std::string_view src,
     UtfAppendUtf16(out, cp);
   }
   return true;
-}
-
-// ================================================================ C++20
-// 便利重载 std::u8string / std::u8string_view（char8_t）与 std::string
-// 内存布局一致， 这里只做零开销的 reinterpret 转换。
-
-inline std::u16string Utf8ToUtf16(std::u8string_view src) {
-  return Utf8ToUtf16(
-      std::string_view(reinterpret_cast<const char*>(src.data()), src.size()));
-}
-
-// 注：无法按返回类型重载，故取名为 Utf16ToU8。
-inline std::u8string Utf16ToU8(std::u16string_view src) {
-  const std::string s = Utf16ToUtf8(src);
-  return std::u8string(reinterpret_cast<const char8_t*>(s.data()), s.size());
 }
 
 // ================================================================ wchar_t

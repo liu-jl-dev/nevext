@@ -96,7 +96,7 @@ cd build && ctest -C Debug --output-on-failure
 **智能体/本地快速验证**（无需 cmake，与仓库既有约定一致）：
 
 ```bash
-g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
+g++ -std=c++17 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
     -Icpp/nevext -Icpp/test \
     -o nevext_test.exe \
     cpp/test/test_main.cpp cpp/test/test_lexer.cpp cpp/test/test_parser.cpp \
@@ -104,7 +104,7 @@ g++ -std=c++20 -Wall -Wextra -finput-charset=UTF-8 -fexec-charset=UTF-8 \
 ./nevext_test.exe
 ```
 
-**当前基线（MinGW GCC 15.2，C++20）**：118 个用例 / 832 条断言全部通过。
+**当前基线（MinGW GCC 15.2，C++17）**：118 个用例 / 832 条断言全部通过。
 其中 60 个是跨实现通用语料（`Conformance.*`），由 `docs/zh-cn/test-plan.md` 定义。
 
 ## 5. 需求 → 用例追溯矩阵

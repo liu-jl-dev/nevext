@@ -9,11 +9,11 @@ Nevext 的 C++ 实现是 **header-only** 的**单文件**，没有 `.lib`、`.dl
 
 1. 把 `cpp/nevext/nevext.hpp` 复制到你的工程中（放哪个目录都行，它不 include 任何自己的文件）；
 2. 在需要使用处 `#include "nevext.hpp"`（或按你放置的相对路径调整）；
-3. 确认工程开启了 C++20（`set(CMAKE_CXX_STANDARD 20)` 或 `/std:c++20`）；
+3. 确认工程开启了 C++17（`set(CMAKE_CXX_STANDARD 17)` 或 `/std:c++17`）；
 
 ## 环境要求
 
-- C++ 标准：**C++20**。代码使用 `std::u8string` 等 C++20 特性
+- C++ 标准：**C++17**。库本体与 demo 均只用 C++17 特性（`std::string_view` 等）；
 - 无第三方依赖，只用标准库。但 C++ 标准库没有 utf8 与 utf16 字符串转换工具，需要自行实现，或使用第三方库如 [github.com/nemtrif/utfcpp](https://github.com/nemtrif/utfcpp)。
 
 
